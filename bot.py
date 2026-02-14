@@ -1,4 +1,5 @@
 import discord
+import json
 import os
 import uuid
 import asyncio
@@ -6,85 +7,75 @@ import requests
 import base64
 from datetime import datetime, timedelta
 
-# ====================================================
-# SKY HUB — BOT DE KEY (GITHUB SALVA SÓ A KEY)
-# ====================================================
+# ================= CONFIG =================
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GITHUB_TOKEN  = os.getenv("GITHUB_TOKEN")
+GITHUB_USER   = "skygod403"
+GITHUB_REPO   = "...22"
+GITHUB_FILE   = "keys_validas.txt"
 
-GITHUB_USER = "skygod403"
-GITHUB_REPO = "...22"
-GITHUB_FILE = "keys_validas.txt"
-
-COMANDO = "/sky.key.C"
-
-# ====================================================
-# ARMAZENAMENTO EM MEMÓRIA (validade 12h)
-# ====================================================
-
-keys_ativas = {}  # user_id : (key, expira)
+COMANDO   = "/sky.key.C"
+KEYS_JSON = "keys.json"
 
 # ====================================================
 # GITHUB
 # ====================================================
 
-def headers():
+def _headers():
     return {
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3+json"
     }
 
-def url():
+def _url():
     return f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{GITHUB_FILE}"
 
 def pegar_sha():
-    r = requests.get(url(), headers=headers())
-    if r.status_code == 200:
-        return r.json()["sha"]
-    return None
+    r = requests.get(_url(), headers=_headers())
+    return r.json().get("sha") if r.status_code == 200 else None
 
-def salvar_github():
-    # Salva somente as KEYS (uma por linha)
-    linhas = [dados[0] for dados in keys_ativas.values()]
-    conteudo = "\n".join(linhas)
+def atualizar_github():
+    dados = carregar_json()
 
-    encoded = base64.b64encode(conteudo.encode()).decode()
+    # pega apenas keys ainda válidas
+    lista = [
+        v["key"]
+        for v in dados
+        if datetime.utcnow() < datetime.fromisoformat(v["expira"])
+    ]
+
+    conteudo = "\n".join(lista)
+    encoded  = base64.b64encode(conteudo.encode()).decode()
+
     sha = pegar_sha()
-
-    body = {
-        "message": "update keys",
-        "content": encoded
-    }
-
+    body = {"message": "bot: update keys", "content": encoded}
     if sha:
         body["sha"] = sha
 
-    requests.put(url(), headers=headers(), json=body)
+    requests.put(_url(), headers=_headers(), json=body)
+    print(f"[BOT] GitHub atualizado — {len(lista)} key(s) ativa(s)")
 
 # ====================================================
-# KEY
+# LOCAL JSON
 # ====================================================
 
-def gerar_key():
-    def p():
-        return uuid.uuid4().hex[:4].upper()
+def carregar_json():
+    if not os.path.exists(KEYS_JSON):
+        return []
+    with open(KEYS_JSON, "r") as f:
+        return json.load(f)
+
+def salvar_json(data):
+    with open(KEYS_JSON, "w") as f:
+        json.dump(data, f, indent=2)
+
+def nova_key():
+    def p(): return uuid.uuid4().hex[:4].upper()
     return f"SKY-{p()}-{p()}-{p()}"
 
-def limpar_expiradas():
-    agora = datetime.utcnow()
-    removidos = []
-
-    for uid in list(keys_ativas.keys()):
-        key, expira = keys_ativas[uid]
-        if expira < agora:
-            removidos.append(uid)
-
-    for uid in removidos:
-        del keys_ativas[uid]
-
-    if removidos:
-        salvar_github()
+def ainda_valida(expira):
+    return datetime.utcnow() < datetime.fromisoformat(expira)
 
 # ====================================================
 # DISCORD
@@ -100,48 +91,63 @@ async def on_ready():
     client.loop.create_task(task_limpeza())
 
 @client.event
-async def on_message(message):
-    if message.author.bot:
+async def on_message(msg):
+    if msg.author.bot:
         return
 
-    if message.content.strip().lower() != COMANDO.lower():
+    if msg.content.strip().lower() != COMANDO.lower():
         return
 
-    user = message.author
+    user = msg.author
+    dados = carregar_json()
 
-    # Já tem key ativa?
-    if user.id in keys_ativas:
-        key, expira = keys_ativas[user.id]
-        if expira > datetime.utcnow():
-            await user.send(
-                f"🔑 Sua key ativa:\n```{key}```\n⏳ Válida por 12h"
-            )
-            await message.add_reaction("✅")
-            return
+    # SEM VERIFICAÇÃO DE KEY EXISTENTE
+    # sempre gera nova
 
-    # Gera nova key
-    key = gerar_key()
-    expira = datetime.utcnow() + timedelta(hours=12)
+    key = nova_key()
+    expira = (datetime.utcnow() + timedelta(hours=12)).isoformat()
 
-    keys_ativas[user.id] = (key, expira)
-    salvar_github()
+    dados.append({
+        "key": key,
+        "expira": expira,
+        "user": str(user),
+        "uid": str(user.id),
+        "criada": datetime.utcnow().isoformat()
+    })
+
+    salvar_json(dados)
+
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, atualizar_github)
 
     await user.send(
         f"🔑 SKY HUB — Key Gerada:\n```{key}```\n⏳ Válida por 12 horas"
     )
 
-    await message.add_reaction("✅")
-    print(f"[BOT] Key criada: {key}")
+    await msg.add_reaction("✅")
+    print(f"[BOT] Key gerada → {user} | {key}")
 
 # ====================================================
-# LIMPEZA AUTOMÁTICA (a cada 1 hora)
+# LIMPEZA AUTOMÁTICA
 # ====================================================
 
 async def task_limpeza():
     await client.wait_until_ready()
+
     while not client.is_closed():
+        dados = carregar_json()
+        antes = len(dados)
+
+        dados = [v for v in dados if ainda_valida(v["expira"])]
+
+        if len(dados) != antes:
+            salvar_json(dados)
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, atualizar_github)
+            print(f"[BOT] Limpeza feita")
+
         await asyncio.sleep(3600)
-        limpar_expiradas()
 
 # ====================================================
+
 client.run(DISCORD_TOKEN)
