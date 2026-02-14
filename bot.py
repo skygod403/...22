@@ -16,42 +16,7 @@ from datetime import datetime, timedelta
 
 # ── CONFIGURAÇÕES ── edite só estas 5 linhas ────────────────────
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-   GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-```
-
-8. **IMPORTANTE:** Verifica se:
-   - ✅ Não tem aspas ao redor (tipo `"os.getenv..."`) ❌
-   - ✅ Tá EXATAMENTE como mostrei acima ✅
-   - ✅ Os nomes dentro do `getenv` tão entre aspas ✅
-
-### **3.4 - Salvar:**
-
-9. **Desce até o final da página**
-10. Clica no botão verde **"Commit changes"**
-11. Na janela que abre, clica em **"Commit changes"** de novo
-
----
-
-## ⏰ **PARTE 4 - AGUARDAR E VERIFICAR:**
-
-### **4.1 - Railway vai reiniciar automaticamente:**
-
-1. Volta pro **Railway**
-2. Vai aparecer algo como **"Deploying..."** ou **"Implantando..."**
-3. **AGUARDA 2-3 MINUTOS** (não fecha a aba!)
-4. Quando aparecer:
-   - 🟢 **"On-line"** com bolinha verde = SUCESSO!
-   - 🔴 **"Acidentado"** vermelho = deu erro (me avisa!)
-
-### **4.2 - Ver os logs:**
-
-5. Clica em **"Deployments"** ou **"Implantações"**
-6. Clica no deployment mais recente (o de cima)
-7. Clica em **"Logs de implantação"** ou **"View Logs"**
-8. Procura por:
-```
-   [BOT] Online como → SKY HUB#XXXX
-   [BOT] Comando ativo: /sky.key.C
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_USER   = "skygod403"
 GITHUB_REPO   = "...22"
 GITHUB_FILE   = "keys_validas.txt"
