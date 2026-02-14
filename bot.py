@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 # ================================================================
 
 # ── CONFIGURAÇÕES ── edite só estas 5 linhas ────────────────────
-DISCORD_TOKEN = "MTQ3MTk2MzM1MjMwNDU4NjkzNA.G5LkuH.vauOik_245bx_lE0B9Hm9ScnA_md1GmI7PKtb8"
+DISCORD_TOKEN = "MTQ3MTk2MzM1MjMwNDU4NjkzNA.GFhalL.8nx3GrO8eFAe6Bm6_VQ-1TY3H7holR1fLWGNdU"
 GITHUB_TOKEN  = "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"
 GITHUB_USER   = "skygod403"
 GITHUB_REPO   = "...22"
