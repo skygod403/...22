@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 
 # ── CONFIGURAÇÕES ── edite só estas 5 linhas ────────────────────
 DISCORD_TOKEN = "MTQ3MTk2MzM1MjMwNDU4NjkzNA.GFhalL.8nx3GrO8eFAe6Bm6_VQ-1TY3H7holR1fLWGNdU"
-GITHUB_TOKEN  = "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"
+GITHUB_TOKEN  = "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"
 GITHUB_USER   = "skygod403"
 GITHUB_REPO   = "...22"
 GITHUB_FILE   = "keys_validas.txt"
