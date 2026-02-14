@@ -7,7 +7,7 @@ import base64
 from datetime import datetime, timedelta
 
 # ================================================================
-#  SKY HUB — Bot de Keys (VERSÃO FINAL CORRIGIDA)
+# SKY HUB — BOT DE KEYS (VERSÃO SIMPLES E FUNCIONAL)
 # ================================================================
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -19,8 +19,11 @@ GITHUB_FILE = "keys_validas.txt"
 
 COMANDO = "/sky.key.C"
 
+# Guarda validade em memória
+keys_ativas = {}
+
 # ================================================================
-#  GITHUB
+# GITHUB
 # ================================================================
 
 def _headers():
@@ -36,58 +39,11 @@ def pegar_sha():
     r = requests.get(_url(), headers=_headers())
     return r.json().get("sha") if r.status_code == 200 else None
 
-def ler_keys_github():
-    """
-    Retorna:
-    {
-        uid: {
-            key,
-            expira,
-            user
-        }
-    }
-    """
-    r = requests.get(_url(), headers=_headers())
-    if r.status_code != 200:
-        return {}
-
-    content = base64.b64decode(r.json()["content"]).decode()
-    dados = {}
-
-    for linha in content.strip().split("\n"):
-        if "|" not in linha:
-            continue
-
-        partes = linha.split("|")
-        if len(partes) < 4:
-            continue
-
-        key = partes[0].strip().upper()
-        expira = partes[1].strip()
-        uid = partes[2].strip()
-        user = partes[3].strip()
-
-        try:
-            if datetime.utcnow() < datetime.fromisoformat(expira):
-                dados[uid] = {
-                    "key": key,
-                    "expira": expira,
-                    "user": user
-                }
-        except:
-            continue
-
-    return dados
-
-def salvar_keys_github(dados):
-    linhas = []
-
-    for uid, v in dados.items():
-        linhas.append(f"{v['key']}|{v['expira']}|{uid}|{v['user']}")
-
+def salvar_keys_github():
+    linhas = list(keys_ativas.keys())
     conteudo = "\n".join(linhas)
-    encoded = base64.b64encode(conteudo.encode()).decode()
 
+    encoded = base64.b64encode(conteudo.encode()).decode()
     sha = pegar_sha()
 
     body = {
@@ -98,17 +54,10 @@ def salvar_keys_github(dados):
     if sha:
         body["sha"] = sha
 
-    r = requests.put(_url(), headers=_headers(), json=body)
-
-    if r.status_code in [200, 201]:
-        print(f"[BOT] GitHub atualizado — {len(dados)} key(s) ativa(s)")
-        return True
-    else:
-        print(f"[BOT] Erro GitHub: {r.status_code} - {r.text}")
-        return False
+    requests.put(_url(), headers=_headers(), json=body)
 
 # ================================================================
-#  KEY
+# KEY
 # ================================================================
 
 def nova_key():
@@ -116,14 +65,18 @@ def nova_key():
         return uuid.uuid4().hex[:4].upper()
     return f"SKY-{p()}-{p()}-{p()}"
 
-def ainda_valida(expira):
-    try:
-        return datetime.utcnow() < datetime.fromisoformat(expira)
-    except:
-        return False
+def limpar_expiradas():
+    agora = datetime.utcnow()
+    expiradas = [k for k, v in keys_ativas.items() if v < agora]
+
+    for k in expiradas:
+        del keys_ativas[k]
+
+    if expiradas:
+        salvar_keys_github()
 
 # ================================================================
-#  DISCORD
+# DISCORD
 # ================================================================
 
 intents = discord.Intents.default()
@@ -132,12 +85,11 @@ client = discord.Client(intents=intents)
 
 @client.event
 async def on_ready():
-    print(f"[BOT] Online como → {client.user}")
-    print(f"[BOT] Comando ativo: {COMANDO}")
+    print(f"[BOT] Online como {client.user}")
     client.loop.create_task(task_limpeza())
 
 @client.event
-async def on_message(msg: discord.Message):
+async def on_message(msg):
     if msg.author.bot:
         return
 
@@ -145,65 +97,33 @@ async def on_message(msg: discord.Message):
         return
 
     user = msg.author
-    uid = str(user.id)
 
-    loop = asyncio.get_event_loop()
-    dados = await loop.run_in_executor(None, ler_keys_github)
+    # Verifica se já tem key ativa
+    for key, expira in keys_ativas.items():
+        if expira > datetime.utcnow():
+            # Já existe uma ativa
+            await user.send(
+                f"🔑 Você já tem uma key ativa:\n```{key}```\n⏳ Expira em 12h"
+            )
+            await msg.add_reaction("✅")
+            return
 
-    # ── Já tem key válida?
-    if uid in dados and ainda_valida(dados[uid]["expira"]):
-        key = dados[uid]["key"]
-        expira = datetime.fromisoformat(dados[uid]["expira"])
-        restante = expira - datetime.utcnow()
-
-        h = int(restante.total_seconds() // 3600)
-        m = int((restante.total_seconds() % 3600) // 60)
-
-        embed = discord.Embed(
-            title="🔑 Você já tem uma key ativa!",
-            description="Use a key abaixo:",
-            color=0x7B2FFF
-        )
-
-        embed.add_field(name="Key", value=f"```{key}```", inline=False)
-        embed.add_field(name="Expira em", value=f"{h}h {m}min", inline=False)
-
-        await user.send(embed=embed)
-        await msg.add_reaction("✅")
-        return
-
-    # ── Gera nova key
+    # Gera nova
     key = nova_key()
-    expira = (datetime.utcnow() + timedelta(hours=12)).isoformat()
+    expira = datetime.utcnow() + timedelta(hours=12)
 
-    dados[uid] = {
-        "key": key,
-        "expira": expira,
-        "user": str(user)
-    }
+    keys_ativas[key] = expira
+    salvar_keys_github()
 
-    sucesso = await loop.run_in_executor(None, salvar_keys_github, dados)
-
-    if not sucesso:
-        await msg.reply("Erro ao salvar key.", delete_after=8)
-        return
-
-    embed = discord.Embed(
-        title="🔑 SKY HUB — Key Gerada!",
-        description="Copie e cole no script:",
-        color=0x7B2FFF
+    await user.send(
+        f"🔑 SKY HUB — Key Gerada:\n```{key}```\n⏳ Válida por 12 horas"
     )
 
-    embed.add_field(name="Sua Key", value=f"```{key}```", inline=False)
-    embed.add_field(name="Validade", value="12 horas", inline=False)
-
-    await user.send(embed=embed)
     await msg.add_reaction("✅")
-
-    print(f"[BOT] Key gerada → {user} | {key}")
+    print(f"[BOT] Key criada: {key}")
 
 # ================================================================
-#  LIMPEZA AUTOMÁTICA
+# LIMPEZA AUTOMÁTICA
 # ================================================================
 
 async def task_limpeza():
@@ -211,22 +131,7 @@ async def task_limpeza():
 
     while not client.is_closed():
         await asyncio.sleep(3600)
-
-        try:
-            loop = asyncio.get_event_loop()
-            dados = await loop.run_in_executor(None, ler_keys_github)
-
-            dados = {
-                uid: v
-                for uid, v in dados.items()
-                if ainda_valida(v["expira"])
-            }
-
-            await loop.run_in_executor(None, salvar_keys_github, dados)
-            print("[BOT] Limpeza automática concluída")
-
-        except Exception as e:
-            print(f"[BOT] Erro limpeza: {e}")
+        limpar_expiradas()
 
 # ================================================================
 client.run(DISCORD_TOKEN)
