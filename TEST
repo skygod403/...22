@@ -1,0 +1,2110 @@
+--[[ SKY HUB v3.0 ]]
+
+local Players          = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService       = game:GetService("RunService")
+local TweenService     = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+
+-- parent seguro
+local function GP()
+	local ok, cg = pcall(function() return game:GetService("CoreGui") end)
+	if ok and cg then return cg end
+	return player:WaitForChild("PlayerGui")
+end
+
+-- tween helper
+local function TW(obj, t, props)
+	TweenService:Create(obj, TweenInfo.new(t, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), props):Play()
+end
+
+-- cores
+local C = {
+	bg      = Color3.fromRGB(8,   8,  12),
+	panel   = Color3.fromRGB(14,  14, 22),
+	border  = Color3.fromRGB(80,  60, 200),
+	a1      = Color3.fromRGB(120, 80, 255),
+	a2      = Color3.fromRGB(0,  200, 255),
+	a3      = Color3.fromRGB(255, 60, 120),
+	green   = Color3.fromRGB(0,  255, 160),
+	white   = Color3.fromRGB(230, 230, 255),
+	dim     = Color3.fromRGB(100, 100, 140),
+	btnOff  = Color3.fromRGB(22,  22,  36),
+	btnOn   = Color3.fromRGB(30,  15,  60),
+	gold    = Color3.fromRGB(255, 200,  50),
+}
+
+-- keys
+local KEYS_URL  = "https://raw.githubusercontent.com/skygod403/...22/refs/heads/main/keys_validas.txt"
+local ADMIN_KEY = "Script_Sky_HUB"
+local isAdmin   = false
+
+local function verificarKey(k)
+	k = k:gsub("%s+","")
+	if k == ADMIN_KEY then isAdmin=true return true,"ADMIN" end
+	local ok,res = pcall(function() return game:HttpGet(KEYS_URL) end)
+	if not ok then return false,"Erro de conexao!" end
+	for linha in res:gmatch("[^\n]+") do
+		if linha:gsub("%s+","") == k then return true,"OK" end
+	end
+	return false,"Key invalida ou expirada!"
+end
+
+-- helpers UI
+local function corner(p,r) Instance.new("UICorner",p).CornerRadius=UDim.new(0,r or 10) end
+local function stroke(p,t,c) local s=Instance.new("UIStroke",p) s.Thickness=t or 1.5 s.Color=c or C.a1 return s end
+local function grad(p,c0,c1,r) local g=Instance.new("UIGradient",p) g.Color=ColorSequence.new(c0,c1) g.Rotation=r or 135 end
+
+-- ================================================================
+-- TELA DE KEY
+-- ================================================================
+local pinGui = Instance.new("ScreenGui")
+pinGui.Name="SKY_PIN" pinGui.ResetOnSpawn=false pinGui.IgnoreGuiInset=true
+pinGui.Parent = GP()
+
+local pinBg = Instance.new("Frame", pinGui)
+pinBg.Size=UDim2.new(1,0,1,0) pinBg.BackgroundColor3=Color3.fromRGB(0,0,0)
+pinBg.BackgroundTransparency=1 pinBg.BorderSizePixel=0
+
+local pinFrame = Instance.new("Frame", pinGui)
+pinFrame.Size=UDim2.new(0,320,0,240)
+pinFrame.Position=UDim2.new(0.5,-160,0.6,-120)
+pinFrame.BackgroundColor3=C.bg
+pinFrame.BackgroundTransparency=1
+pinFrame.BorderSizePixel=0
+corner(pinFrame,18)
+grad(pinFrame, Color3.fromRGB(12,8,24), Color3.fromRGB(5,5,14), 160)
+local pinStroke = stroke(pinFrame, 1.5, C.a1)
+
+-- aparecer suave
+task.delay(0.1, function()
+	TW(pinFrame, 0.5, {BackgroundTransparency=0, Position=UDim2.new(0.5,-160,0.5,-120)})
+end)
+
+local pinGlow = Instance.new("Frame", pinFrame)
+pinGlow.Size=UDim2.new(0.7,0,0,1) pinGlow.Position=UDim2.new(0.15,0,0,0)
+pinGlow.BackgroundColor3=C.a1 pinGlow.BackgroundTransparency=0.2 pinGlow.BorderSizePixel=0
+
+local pinTitle = Instance.new("TextLabel", pinFrame)
+pinTitle.Size=UDim2.new(1,0,0,34) pinTitle.Position=UDim2.new(0,0,0,8)
+pinTitle.BackgroundTransparency=1 pinTitle.Text="SKY"
+pinTitle.Font=Enum.Font.GothamBlack pinTitle.TextSize=30 pinTitle.TextColor3=C.a1
+
+local pinPremium = Instance.new("TextLabel", pinFrame)
+pinPremium.Size=UDim2.new(1,0,0,16) pinPremium.Position=UDim2.new(0,0,0,42)
+pinPremium.BackgroundTransparency=1 pinPremium.Text="PREMIUM"
+pinPremium.Font=Enum.Font.GothamBold pinPremium.TextSize=11
+pinPremium.TextColor3=C.a2
+task.spawn(function()
+	local cols={C.a2, C.a3}
+	while pinPremium.Parent do
+		for _,c in ipairs(cols) do
+			TW(pinPremium,0.8,{TextColor3=c})
+			task.wait(0.8)
+		end
+	end
+end)
+
+local pinSub = Instance.new("TextLabel", pinFrame)
+pinSub.Size=UDim2.new(1,0,0,18) pinSub.Position=UDim2.new(0,0,0,54)
+pinSub.BackgroundTransparency=1 pinSub.Text="VERIFICACAO DE ACESSO"
+pinSub.Font=Enum.Font.Gotham pinSub.TextSize=10 pinSub.TextColor3=C.dim
+
+local pinWrap = Instance.new("Frame", pinFrame)
+pinWrap.Size=UDim2.new(1,-24,0,38) pinWrap.Position=UDim2.new(0,12,0,82)
+pinWrap.BackgroundColor3=C.panel pinWrap.BorderSizePixel=0
+corner(pinWrap,9) stroke(pinWrap,1,C.border)
+
+local pinBox = Instance.new("TextBox", pinWrap)
+pinBox.Size=UDim2.new(1,-16,1,0) pinBox.Position=UDim2.new(0,8,0,0)
+pinBox.BackgroundTransparency=1 pinBox.PlaceholderText="Cole sua key aqui..."
+pinBox.PlaceholderColor3=C.dim pinBox.Text="" pinBox.Font=Enum.Font.GothamBold
+pinBox.TextSize=13 pinBox.TextColor3=C.white pinBox.ClearTextOnFocus=false
+
+local pinBtn = Instance.new("TextButton", pinFrame)
+pinBtn.Size=UDim2.new(1,-24,0,42) pinBtn.Position=UDim2.new(0,12,0,132)
+pinBtn.BackgroundColor3=C.a1 pinBtn.BorderSizePixel=0
+pinBtn.Text="ENTRAR" pinBtn.Font=Enum.Font.GothamBlack
+pinBtn.TextSize=14 pinBtn.TextColor3=Color3.new(1,1,1)
+pinBtn.AutoButtonColor=false corner(pinBtn,10)
+grad(pinBtn, C.a1, C.border, 90)
+
+pinBtn.MouseEnter:Connect(function() TW(pinBtn,0.15,{BackgroundColor3=C.a2}) end)
+pinBtn.MouseLeave:Connect(function() TW(pinBtn,0.15,{BackgroundColor3=C.a1}) end)
+
+local pinFoot = Instance.new("TextLabel", pinFrame)
+pinFoot.Size=UDim2.new(1,0,0,18) pinFoot.Position=UDim2.new(0,0,0,210)
+pinFoot.BackgroundTransparency=1 pinFoot.Text="SKY HUB  v3.0"
+pinFoot.Font=Enum.Font.Gotham pinFoot.TextSize=9 pinFoot.TextColor3=C.dim
+
+-- animação borda
+task.spawn(function()
+	local cols={C.a1,C.a2,C.a3,C.green}
+	while pinFrame.Parent do
+		for _,c in ipairs(cols) do
+			TW(pinStroke,1.2,{Color=c}) TW(pinTitle,1.2,{TextColor3=c}) TW(pinGlow,1.2,{BackgroundColor3=c})
+			task.wait(1.2)
+		end
+	end
+end)
+
+local unlocked = false
+
+-- ================================================================
+-- VERIFICAÇÃO AO CLICAR
+-- ================================================================
+pinBtn.MouseButton1Click:Connect(function()
+	if pinBtn.Text == "VERIFICANDO..." then return end
+	pinBtn.Text="VERIFICANDO..." pinBtn.Active=false
+
+	task.spawn(function()
+		local ok, msg = verificarKey(pinBox.Text)
+		if ok then
+			-- some o painel
+			TW(pinFrame, 0.3, {BackgroundTransparency=1, Position=UDim2.new(0.5,-160,0.4,-120)})
+			TW(pinBg, 0.3, {BackgroundTransparency=0})
+			task.wait(0.5)
+
+			-- ── TELA DE BEM-VINDO ──
+			local wGui = Instance.new("ScreenGui")
+			wGui.Name="SKY_WELCOME" wGui.ResetOnSpawn=false wGui.IgnoreGuiInset=true
+			wGui.Parent = GP()
+
+			local wBg = Instance.new("Frame", wGui)
+			wBg.Size=UDim2.new(1,0,1,0) wBg.BackgroundColor3=Color3.fromRGB(0,0,0)
+			wBg.BackgroundTransparency=0 wBg.BorderSizePixel=0 wBg.ZIndex=1
+
+			local wTop = Instance.new("TextLabel", wGui)
+			wTop.Size=UDim2.new(1,0,0,30) wTop.Position=UDim2.new(0,0,0.34,0)
+			wTop.BackgroundTransparency=1 wTop.Text="BEM-VINDO AO"
+			wTop.Font=Enum.Font.GothamBold wTop.TextSize=18
+			wTop.TextColor3=C.dim wTop.TextTransparency=1 wTop.ZIndex=5
+
+			local wMain = Instance.new("TextLabel", wGui)
+			wMain.Size=UDim2.new(1,0,0,80) wMain.Position=UDim2.new(0,0,0.41,0)
+			wMain.BackgroundTransparency=1 wMain.Text="SKY HUB"
+			wMain.Font=Enum.Font.GothamBlack wMain.TextSize=64
+			wMain.TextColor3=C.a1 wMain.TextTransparency=1 wMain.ZIndex=5
+
+			local wPremium = Instance.new("TextLabel", wGui)
+			wPremium.Size=UDim2.new(1,0,0,26) wPremium.Position=UDim2.new(0,0,0.545,0)
+			wPremium.BackgroundTransparency=1 wPremium.Text="PREMIUM"
+			wPremium.Font=Enum.Font.GothamBlack wPremium.TextSize=20
+			wPremium.TextColor3=C.a2 wPremium.TextTransparency=1 wPremium.ZIndex=5
+
+			local wLine = Instance.new("Frame", wGui)
+			wLine.Size=UDim2.new(0,0,0,2)
+			wLine.Position=UDim2.new(0.5,0,0.60,0)
+			wLine.AnchorPoint=Vector2.new(0.5,0)
+			wLine.BackgroundColor3=C.a1
+			wLine.BackgroundTransparency=1
+			wLine.BorderSizePixel=0 wLine.ZIndex=5
+
+			local wSub = Instance.new("TextLabel", wGui)
+			wSub.Size=UDim2.new(1,0,0,24) wSub.Position=UDim2.new(0,0,0.64,0)
+			wSub.BackgroundTransparency=1
+			wSub.Text = isAdmin and "MODO ADMIN ATIVADO" or "ACESSO LIBERADO"
+			wSub.Font=Enum.Font.GothamBold wSub.TextSize=14
+			wSub.TextColor3 = isAdmin and C.gold or C.green
+			wSub.TextTransparency=1 wSub.ZIndex=5
+
+			-- sequência simples sem loop bloqueante
+			task.wait(0.15)
+			TW(wTop, 0.5, {TextTransparency=0})
+			task.wait(0.3)
+			TW(wMain, 0.5, {TextTransparency=0})
+			task.wait(0.2)
+			TW(wPremium, 0.4, {TextTransparency=0})
+			task.wait(0.3)
+			TW(wLine, 0.4, {Size=UDim2.new(0,260,0,2), BackgroundTransparency=0.3})
+			task.wait(0.25)
+			TW(wSub, 0.4, {TextTransparency=0})
+			task.wait(0.4)
+
+			-- pulsa cor (task.spawn separado, não bloqueia)
+			task.spawn(function()
+				local cs={C.a2,C.a3,C.green,C.a1,C.a2,C.a3,C.green,C.a1}
+				for _,c in ipairs(cs) do
+					TW(wMain,0.35,{TextColor3=c})
+					TW(wLine,0.35,{BackgroundColor3=c})
+					task.wait(0.35)
+				end
+			end)
+			task.spawn(function()
+				local cols={C.a2,C.a3,C.a2,C.a3,C.a2,C.a3,C.a2,C.a3}
+				for _,c in ipairs(cols) do
+					TW(wPremium,0.35,{TextColor3=c})
+					task.wait(0.35)
+				end
+			end)
+
+			-- espera 3s enquanto cores pulsam
+			task.wait(3)
+
+			-- some tudo
+			TW(wTop,     0.3, {TextTransparency=1})
+			TW(wMain,    0.3, {TextTransparency=1})
+			TW(wPremium, 0.3, {TextTransparency=1})
+			TW(wSub,     0.3, {TextTransparency=1})
+			TW(wLine,    0.3, {BackgroundTransparency=1})
+			task.wait(0.2)
+			TW(wBg, 0.5, {BackgroundTransparency=1})
+			task.wait(0.55)
+			wGui:Destroy()
+			pinGui:Destroy()
+			unlocked = true
+
+		else
+			pinBtn.Text="ENTRAR" pinBtn.Active=true
+			pinSub.Text="Key invalida ou expirada!"
+			TW(pinSub,0.1,{TextColor3=C.a3})
+			task.wait(2)
+			pinSub.Text="VERIFICACAO DE ACESSO"
+			TW(pinSub,0.2,{TextColor3=C.dim})
+		end
+	end)
+end)
+
+repeat task.wait() until unlocked
+
+-- ================================================================
+-- TELA PC / CELULAR
+-- ================================================================
+local deviceGui = Instance.new("ScreenGui")
+deviceGui.Name="SKY_DEVICE" deviceGui.ResetOnSpawn=false deviceGui.IgnoreGuiInset=true
+deviceGui.Parent = GP()
+
+local devBg = Instance.new("Frame", deviceGui)
+devBg.Size=UDim2.new(1,0,1,0) devBg.BackgroundColor3=Color3.fromRGB(0,0,0)
+devBg.BackgroundTransparency=0.5 devBg.BorderSizePixel=0
+
+local devFrame = Instance.new("Frame", deviceGui)
+devFrame.Size=UDim2.new(0,320,0,190)
+devFrame.Position=UDim2.new(0.5,-160,0.5,-95)
+devFrame.BackgroundColor3=C.bg devFrame.BorderSizePixel=0
+corner(devFrame,18) stroke(devFrame,1.5,C.a1)
+grad(devFrame, Color3.fromRGB(12,8,24), Color3.fromRGB(5,5,14), 160)
+
+local devTitle = Instance.new("TextLabel", devFrame)
+devTitle.Size=UDim2.new(1,0,0,40) devTitle.Position=UDim2.new(0,0,0,10)
+devTitle.BackgroundTransparency=1 devTitle.Text="SKY HUB v3.0"
+devTitle.Font=Enum.Font.GothamBlack devTitle.TextSize=20 devTitle.TextColor3=C.a1
+
+local devSub = Instance.new("TextLabel", devFrame)
+devSub.Size=UDim2.new(1,0,0,18) devSub.Position=UDim2.new(0,0,0,48)
+devSub.BackgroundTransparency=1 devSub.Text="Selecione sua plataforma"
+devSub.Font=Enum.Font.Gotham devSub.TextSize=11 devSub.TextColor3=C.dim
+
+local function devBtn(icon, label, xp)
+	local btn = Instance.new("TextButton", devFrame)
+	btn.Size=UDim2.new(0,128,0,76) btn.Position=UDim2.new(0,xp,0,76)
+	btn.BackgroundColor3=C.btnOff btn.BorderSizePixel=0
+	btn.Text="" btn.AutoButtonColor=false
+	corner(btn,14) stroke(btn,1.5,C.a1)
+
+	local ic = Instance.new("TextLabel", btn)
+	ic.Size=UDim2.new(1,0,0,38) ic.Position=UDim2.new(0,0,0,6)
+	ic.BackgroundTransparency=1 ic.Text=icon
+	ic.Font=Enum.Font.GothamBlack ic.TextSize=30 ic.TextColor3=C.a1
+
+	local lb = Instance.new("TextLabel", btn)
+	lb.Size=UDim2.new(1,0,0,18) lb.Position=UDim2.new(0,0,0,52)
+	lb.BackgroundTransparency=1 lb.Text=label
+	lb.Font=Enum.Font.GothamBold lb.TextSize=12 lb.TextColor3=C.white
+
+	btn.MouseEnter:Connect(function() TW(btn,0.15,{BackgroundColor3=Color3.fromRGB(28,20,50)}) end)
+	btn.MouseLeave:Connect(function() TW(btn,0.15,{BackgroundColor3=C.btnOff}) end)
+	return btn
+end
+
+local pcBtn     = devBtn("PC",     "PC / Teclado", 20)
+local mobileBtn = devBtn("CEL",    "Celular",      172)
+
+local chosenMobile = false
+local deviceChosen = false
+
+pcBtn.MouseButton1Click:Connect(function()
+	chosenMobile=false
+	TW(devFrame,0.25,{BackgroundTransparency=1}) TW(devBg,0.25,{BackgroundTransparency=1})
+	task.wait(0.3) deviceChosen=true deviceGui:Destroy()
+end)
+mobileBtn.MouseButton1Click:Connect(function()
+	chosenMobile=true
+	TW(devFrame,0.25,{BackgroundTransparency=1}) TW(devBg,0.25,{BackgroundTransparency=1})
+	task.wait(0.3) deviceChosen=true deviceGui:Destroy()
+end)
+
+repeat task.wait() until deviceChosen
+
+-- ================================================================
+-- VARIÁVEIS JOGO
+-- ================================================================
+local character, humanoid, rootPart
+local defaultSpeed=16
+local speedEnabled=false  local savedSpeed=nil
+local infiniteJump=false  local flyEnabled=false
+local bodyVel=nil         local bodyGyr=nil
+local noclipEnabled=false local espEnabled=false
+local antiLagEnabled=false
+local savedPlayerPos=nil
+local selectedTarget = nil
+local grudaEnabled   = false
+
+local function setupChar(char)
+	character=char
+	humanoid=char:WaitForChild("Humanoid")
+	rootPart=char:WaitForChild("HumanoidRootPart")
+	defaultSpeed=humanoid.WalkSpeed
+	if speedEnabled and savedSpeed then humanoid.WalkSpeed=savedSpeed end
+	if bodyVel then bodyVel:Destroy() bodyVel=nil end
+	if bodyGyr then bodyGyr:Destroy() bodyGyr=nil end
+	flyEnabled=false
+end
+if player.Character then setupChar(player.Character) end
+player.CharacterAdded:Connect(setupChar)
+
+-- ================================================================
+-- GUI PRINCIPAL
+-- ================================================================
+local gui = Instance.new("ScreenGui")
+gui.Name="SKY_GUI" gui.ResetOnSpawn=false gui.IgnoreGuiInset=true
+gui.Parent = GP()
+
+local savedPos = UDim2.new(0.5,-150,0.5,-260)
+
+local frame = Instance.new("Frame", gui)
+frame.Size=UDim2.new(0,300,0,560) frame.Position=savedPos
+frame.BackgroundColor3=C.bg frame.BorderSizePixel=0
+frame.Visible=false frame.Active=true frame.Draggable=true
+corner(frame,16)
+grad(frame, Color3.fromRGB(10,8,20), Color3.fromRGB(5,5,14), 160)
+
+-- sombra DENTRO do frame (se move junto)
+local shadow = Instance.new("Frame", frame)
+shadow.Size=UDim2.new(1,16,1,16) shadow.Position=UDim2.new(0,-8,0,-8)
+shadow.BackgroundColor3=Color3.fromRGB(0,0,0) shadow.BackgroundTransparency=0.55
+shadow.BorderSizePixel=0 shadow.ZIndex=frame.ZIndex-1
+corner(shadow,20)
+
+-- salva posição ao soltar
+frame.InputEnded:Connect(function(inp)
+	if inp.UserInputType==Enum.UserInputType.MouseButton1
+	or inp.UserInputType==Enum.UserInputType.Touch then
+		savedPos=frame.Position
+	end
+end)
+
+local frameStroke = stroke(frame,1.5,C.a1)
+
+local topGlow = Instance.new("Frame", frame)
+topGlow.Size=UDim2.new(0.6,0,0,1) topGlow.Position=UDim2.new(0.2,0,0,0)
+topGlow.BackgroundColor3=C.a1 topGlow.BackgroundTransparency=0.1 topGlow.BorderSizePixel=0
+
+-- HEADER
+local header = Instance.new("Frame", frame)
+header.Size=UDim2.new(1,0,0,54) header.BackgroundColor3=C.panel header.BorderSizePixel=0
+corner(header,16)
+local hFix = Instance.new("Frame", header)
+hFix.Size=UDim2.new(1,0,0.5,0) hFix.Position=UDim2.new(0,0,0.5,0)
+hFix.BackgroundColor3=C.panel hFix.BorderSizePixel=0
+
+local titleSky = Instance.new("TextLabel", header)
+titleSky.Size=UDim2.new(0,80,0,28) titleSky.Position=UDim2.new(0,16,0,4)
+titleSky.BackgroundTransparency=1 titleSky.Text="SKY"
+titleSky.Font=Enum.Font.GothamBlack titleSky.TextSize=22
+titleSky.TextColor3=C.a1 titleSky.TextXAlignment=Enum.TextXAlignment.Left
+
+local premiumLbl = Instance.new("TextLabel", header)
+premiumLbl.Size=UDim2.new(0,80,0,14) premiumLbl.Position=UDim2.new(0,16,0,32)
+premiumLbl.BackgroundTransparency=1 premiumLbl.Text="PREMIUM"
+premiumLbl.Font=Enum.Font.GothamBold premiumLbl.TextSize=9
+premiumLbl.TextXAlignment=Enum.TextXAlignment.Left
+premiumLbl.TextColor3=C.a2
+task.spawn(function()
+	local cols={C.a2, C.a3}  -- azul → vermelho
+	while premiumLbl.Parent do
+		for _,c in ipairs(cols) do
+			TW(premiumLbl,0.8,{TextColor3=c})
+			task.wait(0.8)
+		end
+	end
+end)
+
+local v3Badge = Instance.new("TextLabel", header)
+v3Badge.Size=UDim2.new(0,40,0,16) v3Badge.Position=UDim2.new(0,58,0,8)
+v3Badge.BackgroundColor3=C.a1 v3Badge.BackgroundTransparency=0.7
+v3Badge.BorderSizePixel=0 v3Badge.Text="v3.0"
+v3Badge.Font=Enum.Font.GothamBold v3Badge.TextSize=9 v3Badge.TextColor3=C.white
+corner(v3Badge,4)
+
+local adminBadge = Instance.new("TextLabel", header)
+adminBadge.Size=UDim2.new(0,56,0,16) adminBadge.Position=UDim2.new(0,102,0,8)
+adminBadge.BackgroundColor3=C.gold adminBadge.BorderSizePixel=0
+adminBadge.Text="ADMIN" adminBadge.Font=Enum.Font.GothamBold
+adminBadge.TextSize=9 adminBadge.TextColor3=C.gold
+adminBadge.BackgroundTransparency = isAdmin and 0.5 or 1
+adminBadge.TextTransparency       = isAdmin and 0   or 1
+corner(adminBadge,4)
+
+local zHint = Instance.new("TextLabel", header)
+zHint.Size=UDim2.new(0,80,1,0) zHint.Position=UDim2.new(1,-128,0,0)
+zHint.BackgroundTransparency=1
+zHint.Text = chosenMobile and "Toque em S" or "[Z] fechar"
+zHint.Font=Enum.Font.Gotham zHint.TextSize=9
+zHint.TextColor3=C.dim zHint.TextXAlignment=Enum.TextXAlignment.Right
+
+-- Botão X (fechar tudo)
+local closeBtn = Instance.new("TextButton", header)
+closeBtn.Size=UDim2.new(0,28,0,28) closeBtn.Position=UDim2.new(1,-36,0,13)
+closeBtn.BackgroundColor3=Color3.fromRGB(180,30,30)
+closeBtn.BorderSizePixel=0 closeBtn.AutoButtonColor=false
+closeBtn.Text="✕" closeBtn.Font=Enum.Font.GothamBlack
+closeBtn.TextSize=14 closeBtn.TextColor3=Color3.new(1,1,1)
+corner(closeBtn,7)
+stroke(closeBtn,1.2,Color3.fromRGB(255,80,80))
+closeBtn.MouseEnter:Connect(function()
+	TW(closeBtn,0.12,{BackgroundColor3=Color3.fromRGB(255,50,50)})
+end)
+closeBtn.MouseLeave:Connect(function()
+	TW(closeBtn,0.12,{BackgroundColor3=Color3.fromRGB(180,30,30)})
+end)
+
+-- SCROLL
+local scroll = Instance.new("ScrollingFrame", frame)
+scroll.Size=UDim2.new(1,0,1,-58) scroll.Position=UDim2.new(0,0,0,58)
+scroll.BackgroundTransparency=1 scroll.BorderSizePixel=0
+scroll.ScrollBarThickness=3 scroll.ScrollBarImageColor3=C.a1
+
+local yy = 10
+
+local function mkSep()
+	local s=Instance.new("Frame",scroll)
+	s.Size=UDim2.new(1,-24,0,1) s.Position=UDim2.new(0,12,0,yy)
+	s.BackgroundColor3=C.border s.BackgroundTransparency=0.7 s.BorderSizePixel=0
+	yy=yy+10
+end
+
+local function mkSection(text, color)
+	local dot=Instance.new("Frame",scroll)
+	dot.Size=UDim2.new(0,6,0,6) dot.Position=UDim2.new(0,14,0,yy+9)
+	dot.BackgroundColor3=color dot.BorderSizePixel=0 corner(dot,3)
+	local lbl=Instance.new("TextLabel",scroll)
+	lbl.Size=UDim2.new(1,-32,0,24) lbl.Position=UDim2.new(0,26,0,yy)
+	lbl.BackgroundTransparency=1 lbl.Text=text
+	lbl.Font=Enum.Font.GothamBold lbl.TextSize=10
+	lbl.TextColor3=color lbl.TextXAlignment=Enum.TextXAlignment.Left
+	yy=yy+26
+	return lbl
+end
+
+local function mkBtn(label, color)
+	local btn=Instance.new("TextButton",scroll)
+	btn.Size=UDim2.new(1,-24,0,36) btn.Position=UDim2.new(0,12,0,yy)
+	btn.BackgroundColor3=C.btnOff btn.BorderSizePixel=0
+	btn.Text="" btn.AutoButtonColor=false corner(btn,9)
+	local bstroke=Instance.new("UIStroke",btn)
+	bstroke.Thickness=1 bstroke.Color=color bstroke.Transparency=0.6
+	local bdot=Instance.new("Frame",btn)
+	bdot.Size=UDim2.new(0,7,0,7) bdot.Position=UDim2.new(0,12,0.5,-3)
+	bdot.BackgroundColor3=C.dim bdot.BorderSizePixel=0 corner(bdot,4)
+	local blbl=Instance.new("TextLabel",btn)
+	blbl.Size=UDim2.new(1,-30,1,0) blbl.Position=UDim2.new(0,26,0,0)
+	blbl.BackgroundTransparency=1 blbl.Text=label
+	blbl.Font=Enum.Font.GothamBold blbl.TextSize=13
+	blbl.TextColor3=C.dim blbl.TextXAlignment=Enum.TextXAlignment.Left
+	local function setState(on)
+		if on then
+			TW(btn,0.2,{BackgroundColor3=C.btnOn})
+			TW(bstroke,0.2,{Transparency=0,Color=color})
+			TW(bdot,0.2,{BackgroundColor3=color})
+			TW(blbl,0.2,{TextColor3=color})
+		else
+			TW(btn,0.2,{BackgroundColor3=C.btnOff})
+			TW(bstroke,0.2,{Transparency=0.6,Color=color})
+			TW(bdot,0.2,{BackgroundColor3=C.dim})
+			TW(blbl,0.2,{TextColor3=C.dim})
+		end
+	end
+	btn.MouseEnter:Connect(function() TW(btn,0.1,{BackgroundColor3=Color3.fromRGB(28,28,45)}) end)
+	btn.MouseLeave:Connect(function() TW(btn,0.1,{BackgroundColor3=C.btnOff}) end)
+	yy=yy+44
+	return btn, blbl, setState
+end
+
+local function mkBox(ph)
+	local wrap=Instance.new("Frame",scroll)
+	wrap.Size=UDim2.new(1,-24,0,34) wrap.Position=UDim2.new(0,12,0,yy)
+	wrap.BackgroundColor3=C.panel wrap.BorderSizePixel=0
+	corner(wrap,8) stroke(wrap,1,C.border)
+	local box=Instance.new("TextBox",wrap)
+	box.Size=UDim2.new(1,-16,1,0) box.Position=UDim2.new(0,8,0,0)
+	box.BackgroundTransparency=1 box.PlaceholderText=ph
+	box.PlaceholderColor3=C.dim box.Text=""
+	box.Font=Enum.Font.Gotham box.TextSize=13
+	box.TextColor3=C.white box.ClearTextOnFocus=false
+	yy=yy+42
+	return box
+end
+
+-- seções
+local secVelocidade = mkSection("VELOCIDADE", C.a2)
+local speedBox = mkBox("Velocidade (Ex: 100)")
+local speedBtn,speedLbl,speedSet = mkBtn("Velocidade  OFF", C.a2)
+mkSep()
+
+local secPulo = mkSection("PULO INFINITO", C.green)
+local jumpBtn,jumpLbl,jumpSet = mkBtn("Pulo Infinito  OFF", C.green)
+mkSep()
+
+local secVoar = mkSection("VOAR", C.a1)
+local flyBox = mkBox("Vel. fly (Ex: 60)")
+local flyBtn,flyLbl,flySet = mkBtn("Fly  OFF", C.a1)
+mkSep()
+
+local secNoclip = mkSection("NO-CLIP", C.a3)
+local noclipBtn,noclipLbl,noclipSet = mkBtn("No-Clip  OFF", C.a3)
+mkSep()
+
+-- helper: botão metade de largura (para pares lado a lado)
+local function mkHalfBtn(label, color, xOff)
+	local btn=Instance.new("TextButton",scroll)
+	btn.Size=UDim2.new(0,134,0,36) btn.Position=UDim2.new(0,xOff,0,yy)
+	btn.BackgroundColor3=C.btnOff btn.BorderSizePixel=0
+	btn.Text="" btn.AutoButtonColor=false corner(btn,9)
+	local bs=Instance.new("UIStroke",btn)
+	bs.Thickness=1 bs.Color=color bs.Transparency=0.6
+	local bl=Instance.new("TextLabel",btn)
+	bl.Size=UDim2.new(1,-8,1,0) bl.Position=UDim2.new(0,4,0,0)
+	bl.BackgroundTransparency=1 bl.Text=label
+	bl.Font=Enum.Font.GothamBold bl.TextSize=12
+	bl.TextColor3=C.dim bl.TextXAlignment=Enum.TextXAlignment.Center
+	local function setState(on)
+		if on then
+			TW(btn,0.2,{BackgroundColor3=C.btnOn})
+			TW(bs,0.2,{Transparency=0,Color=color})
+			TW(bl,0.2,{TextColor3=color})
+		else
+			TW(btn,0.2,{BackgroundColor3=C.btnOff})
+			TW(bs,0.2,{Transparency=0.6,Color=color})
+			TW(bl,0.2,{TextColor3=C.dim})
+		end
+	end
+	btn.MouseEnter:Connect(function() TW(btn,0.1,{BackgroundColor3=Color3.fromRGB(28,28,45)}) end)
+	btn.MouseLeave:Connect(function() TW(btn,0.1,{BackgroundColor3=C.btnOff}) end)
+	return btn, bl, setState
+end
+
+local secPlayers = mkSection("PLAYERS", Color3.fromRGB(255,80,80))
+
+-- seletor de jogadores (< nome >)
+local selWrap=Instance.new("Frame",scroll)
+selWrap.Size=UDim2.new(1,-24,0,36) selWrap.Position=UDim2.new(0,12,0,yy)
+selWrap.BackgroundColor3=C.panel selWrap.BorderSizePixel=0
+corner(selWrap,9) stroke(selWrap,1,Color3.fromRGB(255,80,80))
+
+local selLeft=Instance.new("TextButton",selWrap)
+selLeft.Size=UDim2.new(0,34,1,0) selLeft.Position=UDim2.new(0,0,0,0)
+selLeft.BackgroundTransparency=1 selLeft.Text="<"
+selLeft.Font=Enum.Font.GothamBlack selLeft.TextSize=16
+selLeft.TextColor3=Color3.fromRGB(255,80,80) selLeft.AutoButtonColor=false
+corner(selLeft,9)
+
+local selDisp=Instance.new("TextLabel",selWrap)
+selDisp.Size=UDim2.new(1,-76,1,0) selDisp.Position=UDim2.new(0,38,0,0)
+selDisp.BackgroundTransparency=1 selDisp.Text="Nenhum"
+selDisp.Font=Enum.Font.GothamBold selDisp.TextSize=12
+selDisp.TextColor3=C.dim selDisp.TextTruncate=Enum.TextTruncate.AtEnd
+
+local selRight=Instance.new("TextButton",selWrap)
+selRight.Size=UDim2.new(0,34,1,0) selRight.Position=UDim2.new(1,-34,0,0)
+selRight.BackgroundTransparency=1 selRight.Text=">"
+selRight.Font=Enum.Font.GothamBlack selRight.TextSize=16
+selRight.TextColor3=Color3.fromRGB(255,80,80) selRight.AutoButtonColor=false
+corner(selRight,9)
+yy=yy+44
+
+-- botões Spectate e Grudar lado a lado
+local kickBtn,kickLbl,kickSet = mkHalfBtn("Spectate  OFF", C.green, 12)
+local grudaBtn,grudaLbl,grudaSet = mkHalfBtn("Grudar  OFF", C.green, 154)
+yy=yy+44
+mkSep()
+
+local secEsp = mkSection("ESP PLAYERS", Color3.fromRGB(255,80,80))
+local espBtn,espLbl,espSet = mkBtn("ESP  OFF", Color3.fromRGB(255,80,80))
+mkSep()
+
+local secAntilag = mkSection("ANTI-LAG", Color3.fromRGB(255,165,0))
+local antiBtn,antiLbl,antiSet = mkBtn("Anti-Lag  OFF", Color3.fromRGB(255,165,0))
+mkSep()
+
+local secPosicao = mkSection("POSICAO", C.gold)
+local savePosBtn,savePosLbl,savePosSet = mkBtn("Save Position", C.gold)
+local loadPosBtn,loadPosLbl,loadPosSet = mkBtn("Load Position", C.a2)
+mkSep()
+
+-- ── AUTO CLICK ────────────────────────────────────────────
+local secAutoClick = mkSection("AUTO CLICK", C.green)
+
+-- linha velocidade: label + unidade toggle + input
+local acSpeedWrap = Instance.new("Frame", scroll)
+acSpeedWrap.Size     = UDim2.new(1,-24,0,34)
+acSpeedWrap.Position = UDim2.new(0,12,0,yy)
+acSpeedWrap.BackgroundColor3 = C.panel
+acSpeedWrap.BorderSizePixel  = 0
+corner(acSpeedWrap,8) stroke(acSpeedWrap,1,C.border)
+
+local acUnitBtn = Instance.new("TextButton", acSpeedWrap)
+acUnitBtn.Size     = UDim2.new(0,30,1,0)
+acUnitBtn.Position = UDim2.new(1,-32,0,0)
+acUnitBtn.BackgroundColor3 = C.border
+acUnitBtn.BackgroundTransparency = 0.5
+acUnitBtn.BorderSizePixel = 0
+acUnitBtn.AutoButtonColor = false
+acUnitBtn.Text = "ms"
+acUnitBtn.Font = Enum.Font.GothamBold
+acUnitBtn.TextSize = 10
+acUnitBtn.TextColor3 = C.white
+corner(acUnitBtn, 6)
+
+local acSpeedBox = Instance.new("TextBox", acSpeedWrap)
+acSpeedBox.Size     = UDim2.new(1,-44,1,0)
+acSpeedBox.Position = UDim2.new(0,8,0,0)
+acSpeedBox.BackgroundTransparency = 1
+acSpeedBox.PlaceholderText = "Velocidade (ex: 100ms)"
+acSpeedBox.PlaceholderColor3 = C.dim
+acSpeedBox.Text = ""
+acSpeedBox.Font = Enum.Font.Gotham
+acSpeedBox.TextSize = 13
+acSpeedBox.TextColor3 = C.white
+acSpeedBox.ClearTextOnFocus = false
+yy = yy + 42
+
+-- aviso de velocidade baixa
+local acWarnLbl = Instance.new("TextLabel", scroll)
+acWarnLbl.Size     = UDim2.new(1,-24,0,28)
+acWarnLbl.Position = UDim2.new(0,12,0,yy)
+acWarnLbl.BackgroundColor3 = Color3.fromRGB(60,10,10)
+acWarnLbl.BackgroundTransparency = 0.3
+acWarnLbl.BorderSizePixel = 0
+acWarnLbl.Text = "⚠ Abaixo de 30ms pode travar!"
+acWarnLbl.Font = Enum.Font.GothamBold
+acWarnLbl.TextSize = 11
+acWarnLbl.TextColor3 = Color3.fromRGB(255,80,60)
+acWarnLbl.Visible = false
+corner(acWarnLbl, 7)
+yy = yy + 34
+
+-- aviso PC
+local acPcWarn = Instance.new("Frame", scroll)
+acPcWarn.Size = UDim2.new(1,-24,0,30)
+acPcWarn.Position = UDim2.new(0,12,0,yy)
+acPcWarn.BackgroundColor3 = Color3.fromRGB(20,16,40)
+acPcWarn.BorderSizePixel = 0
+acPcWarn.Visible = chosenMobile  -- só aparece se escolheu Celular
+corner(acPcWarn, 8)
+local acPcStroke = Instance.new("UIStroke", acPcWarn)
+acPcStroke.Thickness = 1.2
+acPcStroke.Color = Color3.fromRGB(120,80,255)
+task.spawn(function()
+	while acPcWarn.Parent do
+		TW(acPcStroke, 1.0, {Color = Color3.fromRGB(0,200,255)})
+		task.wait(1.0)
+		TW(acPcStroke, 1.0, {Color = Color3.fromRGB(120,80,255)})
+		task.wait(1.0)
+	end
+end)
+local acPcIcon = Instance.new("TextLabel", acPcWarn)
+acPcIcon.Size = UDim2.new(0,24,1,0)
+acPcIcon.Position = UDim2.new(0,8,0,0)
+acPcIcon.BackgroundTransparency = 1
+acPcIcon.Text = "⚠️"
+acPcIcon.TextSize = 15
+acPcIcon.Font = Enum.Font.Gotham
+acPcIcon.TextColor3 = Color3.fromRGB(230,230,255)
+local acPcLbl = Instance.new("TextLabel", acPcWarn)
+acPcLbl.Size = UDim2.new(1,-36,1,0)
+acPcLbl.Position = UDim2.new(0,32,0,0)
+acPcLbl.BackgroundTransparency = 1
+acPcLbl.Text = "RECOMENDADO USAR EM PC !"
+acPcLbl.Font = Enum.Font.GothamBold
+acPcLbl.TextSize = 11
+acPcLbl.TextColor3 = Color3.fromRGB(180,140,255)
+acPcLbl.TextXAlignment = Enum.TextXAlignment.Left
+if chosenMobile then yy = yy + 38 end
+
+local acActivBtn, acActivLbl, acActivSet = mkBtn("Auto Click  OFF", C.green)
+local acCoordBtn, acCoordLbl, acCoordSet = mkBtn("Definir Coordenadas", C.a2)
+mkSep()
+
+local secIdioma = mkSection("IDIOMA", C.a2)
+
+-- 3 botões de idioma lado a lado
+local function mkLangBtn(label, xOff)
+	local btn = Instance.new("TextButton", scroll)
+	btn.Size = UDim2.new(0,84,0,34) btn.Position = UDim2.new(0, xOff, 0, yy)
+	btn.BackgroundColor3 = C.btnOff btn.BorderSizePixel = 0
+	btn.Text = label btn.AutoButtonColor = false
+	btn.Font = Enum.Font.GothamBold btn.TextSize = 12
+	btn.TextColor3 = C.dim corner(btn, 8)
+	local bs = Instance.new("UIStroke", btn)
+	bs.Thickness = 1 bs.Color = C.a2 bs.Transparency = 0.6
+	btn.MouseEnter:Connect(function() TW(btn,0.1,{BackgroundColor3=Color3.fromRGB(28,28,45)}) end)
+	btn.MouseLeave:Connect(function() TW(btn,0.1,{BackgroundColor3=C.btnOff}) end)
+	return btn, bs
+end
+
+local langPTBtn, langPTStroke = mkLangBtn("🇧🇷 PT", 12)
+local langENBtn, langENStroke = mkLangBtn("🇺🇸 EN", 104)
+local langESBtn, langESStroke = mkLangBtn("🇪🇸 ES", 196)
+yy = yy + 44
+mkSep()
+
+local secMapa = mkSection("ARQUIVOS DO MAPA", C.a1)
+local mapaBtn, mapaLbl, mapaSet = mkBtn("Ver Arquivos", C.a1)
+mkSep()
+
+local secChat = mkSection("VER CHAT", C.a3)
+local chatBtn, chatLbl, chatSet = mkBtn("Ver Chat  OFF", C.a3)
+mkSep()
+
+scroll.CanvasSize = UDim2.new(0,0,0,yy+16)
+
+-- ================================================================
+-- BOTÃO S (minimizar)
+-- ================================================================
+local mini = Instance.new("ImageButton", gui)
+mini.Size=UDim2.new(0,54,0,54) mini.Position=UDim2.new(0,16,1,-72)
+mini.BackgroundColor3=C.bg mini.BorderSizePixel=0
+mini.Image="" mini.ZIndex=10 mini.Active=true
+corner(mini,14)
+grad(mini, Color3.fromRGB(18,10,40), Color3.fromRGB(8,8,18), 135)
+local miniStroke = stroke(mini,2,C.a1)
+
+local miniS = Instance.new("TextLabel", mini)
+miniS.Size=UDim2.new(1,0,1,0) miniS.BackgroundTransparency=1
+miniS.Text="S" miniS.Font=Enum.Font.GothamBlack
+miniS.TextSize=26 miniS.TextColor3=C.a1 miniS.ZIndex=12
+
+task.spawn(function()
+	local cs={C.a1,C.a2,C.a3,C.green}
+	while mini.Parent do
+		for _,c in ipairs(cs) do
+			TW(miniStroke,1.4,{Color=c}) TW(miniS,1.4,{TextColor3=c})
+			task.wait(1.4)
+		end
+	end
+end)
+
+mini.MouseEnter:Connect(function() TW(miniStroke,0.15,{Thickness=2.5}) end)
+mini.MouseLeave:Connect(function() TW(miniStroke,0.15,{Thickness=2}) end)
+
+-- toggle
+local function toggleGui()
+	if frame.Visible then
+		savedPos = frame.Position
+		frame.Visible = false
+	else
+		frame.Position = savedPos
+		frame.Visible = true
+	end
+end
+
+mini.MouseButton1Click:Connect(toggleGui)
+if not chosenMobile then
+	UserInputService.InputBegan:Connect(function(inp,gp)
+		if gp then return end
+		if inp.KeyCode==Enum.KeyCode.Z then toggleGui() end
+	end)
+end
+
+-- animação borda principal
+task.spawn(function()
+	local cs={C.a1,C.a2,C.a3,C.green}
+	while frame.Parent do
+		for _,c in ipairs(cs) do
+			TW(frameStroke,1.4,{Color=c}) TW(topGlow,1.4,{BackgroundColor3=c})
+			task.wait(1.4)
+		end
+	end
+end)
+
+-- ================================================================
+-- VELOCIDADE
+-- ================================================================
+speedBtn.MouseButton1Click:Connect(function()
+	if not humanoid then return end
+	speedEnabled = not speedEnabled
+	if speedEnabled then
+		local v=tonumber(speedBox.Text)
+		if v and v>0 then
+			savedSpeed=v humanoid.WalkSpeed=v
+			speedSet(true) speedLbl.Text="Velocidade  ON | "..v
+		else speedEnabled=false end
+	else
+		savedSpeed=nil humanoid.WalkSpeed=defaultSpeed
+		speedSet(false) speedLbl.Text="Velocidade  OFF"
+	end
+end)
+
+RunService.RenderStepped:Connect(function()
+	if speedEnabled and humanoid and savedSpeed then
+		if humanoid.WalkSpeed~=savedSpeed then humanoid.WalkSpeed=savedSpeed end
+	end
+end)
+
+-- ================================================================
+-- PULO INFINITO
+-- ================================================================
+jumpBtn.MouseButton1Click:Connect(function()
+	infiniteJump=not infiniteJump
+	jumpSet(infiniteJump)
+	jumpLbl.Text=infiniteJump and "Pulo Infinito  ON" or "Pulo Infinito  OFF"
+end)
+
+UserInputService.JumpRequest:Connect(function()
+	if infiniteJump and humanoid then humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end
+end)
+
+-- ================================================================
+-- FLY
+-- ================================================================
+flyBtn.MouseButton1Click:Connect(function()
+	if not rootPart then return end
+	flyEnabled=not flyEnabled
+	if flyEnabled then
+		bodyVel=Instance.new("BodyVelocity",rootPart)
+		bodyVel.MaxForce=Vector3.new(1e6,1e6,1e6)
+		bodyVel.Velocity=Vector3.zero
+		bodyGyr=Instance.new("BodyGyro",rootPart)
+		bodyGyr.MaxTorque=Vector3.new(1e6,1e6,1e6)
+		flySet(true) flyLbl.Text="Fly  ON"
+	else
+		if bodyVel then bodyVel:Destroy() bodyVel=nil end
+		if bodyGyr then bodyGyr:Destroy() bodyGyr=nil end
+		flySet(false) flyLbl.Text="Fly  OFF"
+	end
+end)
+
+RunService.RenderStepped:Connect(function()
+	if not(flyEnabled and bodyVel and bodyGyr) then return end
+	local sp=tonumber(flyBox.Text) or 50
+	local cam=workspace.CurrentCamera
+	local dir=Vector3.zero
+	if not chosenMobile then
+		if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir+=cam.CFrame.LookVector  end
+		if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir-=cam.CFrame.LookVector  end
+		if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir-=cam.CFrame.RightVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir+=cam.CFrame.RightVector end
+	else
+		local mv=humanoid.MoveDirection
+		if mv.Magnitude>0.1 then dir=mv end
+	end
+	bodyVel.Velocity=dir.Magnitude>0 and dir.Unit*sp or Vector3.zero
+	bodyGyr.CFrame=cam.CFrame
+end)
+
+-- ================================================================
+-- NOCLIP
+-- ================================================================
+noclipBtn.MouseButton1Click:Connect(function()
+	noclipEnabled=not noclipEnabled
+	noclipSet(noclipEnabled)
+	noclipLbl.Text=noclipEnabled and "No-Clip  ON" or "No-Clip  OFF"
+end)
+
+RunService.Stepped:Connect(function()
+	if noclipEnabled and character then
+		for _,p in ipairs(character:GetDescendants()) do
+			if p:IsA("BasePart") then p.CanCollide=false end
+		end
+	end
+end)
+
+-- ================================================================
+-- ANTI-LAG
+-- ================================================================
+antiBtn.MouseButton1Click:Connect(function()
+	antiLagEnabled=not antiLagEnabled
+	antiSet(antiLagEnabled)
+	antiLbl.Text=antiLagEnabled and "Anti-Lag  ON" or "Anti-Lag  OFF"
+	if antiLagEnabled then
+		pcall(function() game:GetService("Lighting").GlobalShadows=false end)
+		for _,o in ipairs(workspace:GetDescendants()) do
+			if o:IsA("ParticleEmitter") or o:IsA("Smoke") or o:IsA("Fire") or o:IsA("Sparkles") then
+				o.Enabled=false
+			end
+		end
+	else
+		pcall(function() game:GetService("Lighting").GlobalShadows=true end)
+		for _,o in ipairs(workspace:GetDescendants()) do
+			if o:IsA("ParticleEmitter") or o:IsA("Smoke") or o:IsA("Fire") or o:IsA("Sparkles") then
+				o.Enabled=true
+			end
+		end
+	end
+end)
+
+-- ================================================================
+-- ESP
+-- ================================================================
+local espCache={} local lineCache={} local nameCache={}
+
+local lineGui=Instance.new("ScreenGui")
+lineGui.Name="ESP_LINES" lineGui.ResetOnSpawn=false lineGui.IgnoreGuiInset=true
+lineGui.Parent=GP()
+
+local function mkLine()
+	local l=Instance.new("Frame",lineGui)
+	l.BackgroundColor3=Color3.fromRGB(255,50,50)
+	l.BorderSizePixel=0 l.AnchorPoint=Vector2.new(0.5,0)
+	l.Visible=false return l
+end
+
+local function updateLine(l,from,to)
+	local dx=to.X-from.X local dy=to.Y-from.Y
+	local dist=math.sqrt(dx*dx+dy*dy)
+	l.Size=UDim2.new(0,dist,0,2)
+	l.Position=UDim2.new(0,from.X,0,from.Y)
+	l.Rotation=math.deg(math.atan2(dy,dx))
+	l.Visible=true
+end
+
+local function addESP(char)
+	if espCache[char] then return end
+	local plr=Players:GetPlayerFromCharacter(char)
+	-- highlight vermelho
+	local h=Instance.new("Highlight")
+	h.FillColor=Color3.fromRGB(255,0,0)
+	h.OutlineColor=Color3.fromRGB(255,80,80)
+	h.FillTransparency=0.45
+	h.OutlineTransparency=0
+	h.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
+	h.Parent=char espCache[char]=h lineCache[char]=mkLine()
+	-- nome flutuante acima da cabeça
+	local head=char:FindFirstChild("Head")
+	if head then
+		local bb=Instance.new("BillboardGui")
+		bb.Name="SKY_ESP_NAME"
+		bb.Size=UDim2.new(0,220,0,36)
+		bb.StudsOffset=Vector3.new(0,2.8,0)
+		bb.AlwaysOnTop=true
+		bb.Parent=head
+		local nl=Instance.new("TextLabel",bb)
+		nl.Size=UDim2.new(1,0,1,0)
+		nl.BackgroundTransparency=1
+		nl.Text=plr and plr.Name or "?"
+		nl.Font=Enum.Font.GothamBlack
+		nl.TextSize=24
+		nl.TextColor3=Color3.fromRGB(255,50,50)
+		nl.TextStrokeTransparency=0.4
+		nl.TextStrokeColor3=Color3.fromRGB(0,0,0)
+		nameCache[char]=bb
+	end
+end
+
+local function clearESP()
+	for c,h in pairs(espCache) do if h then h:Destroy() end end
+	for c,l in pairs(lineCache) do if l then l:Destroy() end end
+	for c,b in pairs(nameCache) do if b then b:Destroy() end end
+	espCache={} lineCache={} nameCache={}
+end
+
+espBtn.MouseButton1Click:Connect(function()
+	espEnabled=not espEnabled
+	espSet(espEnabled)
+	espLbl.Text=espEnabled and "ESP  ON" or "ESP  OFF"
+	if espEnabled then
+		for _,p in ipairs(Players:GetPlayers()) do
+			if p~=player and p.Character then addESP(p.Character) end
+		end
+	else clearESP() end
+end)
+
+Players.PlayerAdded:Connect(function(p)
+	p.CharacterAdded:Connect(function(c)
+		task.wait(1) if espEnabled then addESP(c) end
+	end)
+end)
+
+RunService.RenderStepped:Connect(function()
+	if not espEnabled or not rootPart then return end
+	local cam=workspace.CurrentCamera
+	local origin=Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y)
+	for char,line in pairs(lineCache) do
+		if not char or not char.Parent then
+			if line then line:Destroy() end lineCache[char]=nil
+		else
+			local rp=char:FindFirstChild("HumanoidRootPart")
+			if rp then
+				local sp,on=cam:WorldToViewportPoint(rp.Position)
+				if on then updateLine(line,origin,Vector2.new(sp.X,sp.Y))
+				else line.Visible=false end
+			end
+		end
+	end
+end)
+
+-- ================================================================
+-- FLY MOBILE (botões subir/descer)
+-- ================================================================
+if chosenMobile then
+	local fmGui=Instance.new("ScreenGui")
+	fmGui.Name="FLY_MOBILE" fmGui.ResetOnSpawn=false fmGui.IgnoreGuiInset=true
+	fmGui.Parent=GP()
+
+	local function fmBtn(icon, pos)
+		local b=Instance.new("TextButton",fmGui)
+		b.Size=UDim2.new(0,52,0,52) b.Position=pos
+		b.BackgroundColor3=Color3.fromRGB(20,20,40)
+		b.BackgroundTransparency=0.3 b.BorderSizePixel=0
+		b.Text=icon b.Font=Enum.Font.GothamBlack
+		b.TextSize=24 b.TextColor3=C.white
+		b.AutoButtonColor=false b.ZIndex=15 b.Visible=false
+		corner(b,12) stroke(b,1.5,C.a1,0.3)
+		return b
+	end
+
+	local upBtn   = fmBtn("^", UDim2.new(1,-130,1,-180))
+	local downBtn = fmBtn("v", UDim2.new(1,-130,1,-120))
+
+	flyBtn.MouseButton1Click:Connect(function()
+		upBtn.Visible   = flyEnabled
+		downBtn.Visible = flyEnabled
+	end)
+
+	upBtn.InputBegan:Connect(function(i)
+		if i.UserInputType==Enum.UserInputType.Touch then
+			RunService:BindToRenderStep("FlyUp",200,function()
+				if flyEnabled and bodyVel then
+					bodyVel.Velocity=Vector3.new(bodyVel.Velocity.X,(tonumber(flyBox.Text) or 50)*0.5,bodyVel.Velocity.Z)
+				end
+			end)
+		end
+	end)
+	upBtn.InputEnded:Connect(function() RunService:UnbindFromRenderStep("FlyUp") end)
+
+	downBtn.InputBegan:Connect(function(i)
+		if i.UserInputType==Enum.UserInputType.Touch then
+			RunService:BindToRenderStep("FlyDown",200,function()
+				if flyEnabled and bodyVel then
+					bodyVel.Velocity=Vector3.new(bodyVel.Velocity.X,-(tonumber(flyBox.Text) or 50)*0.5,bodyVel.Velocity.Z)
+				end
+			end)
+		end
+	end)
+	downBtn.InputEnded:Connect(function() RunService:UnbindFromRenderStep("FlyDown") end)
+end
+
+-- ================================================================
+-- PLAYERS: SELETOR, KICK, GRUDAR
+-- ================================================================
+local playerList = {}
+local selIndex   = 0
+
+local function refreshSelector()
+	playerList = {}
+	for _,p in ipairs(Players:GetPlayers()) do
+		if p ~= player then table.insert(playerList, p) end
+	end
+	if #playerList == 0 then
+		selectedTarget = nil selIndex = 0
+		selDisp.Text = "Nenhum" selDisp.TextColor3 = C.dim
+	else
+		if selIndex < 1 or selIndex > #playerList then selIndex = 1 end
+		-- mantém o target atual se ainda estiver na lista
+		local found = false
+		if selectedTarget then
+			for i,p in ipairs(playerList) do
+				if p == selectedTarget then selIndex=i found=true break end
+			end
+		end
+		if not found then selIndex=1 end
+		selectedTarget = playerList[selIndex]
+		selDisp.Text = selectedTarget.Name
+		selDisp.TextColor3 = Color3.fromRGB(255,80,80)
+	end
+end
+
+local function stepSel(dir)
+	refreshSelector()
+	if #playerList == 0 then return end
+	selIndex = ((selIndex - 1 + dir) % #playerList) + 1
+	selectedTarget = playerList[selIndex]
+	selDisp.Text = selectedTarget.Name
+	selDisp.TextColor3 = Color3.fromRGB(255,80,80)
+end
+
+selLeft.MouseButton1Click:Connect(function()  stepSel(-1) end)
+selRight.MouseButton1Click:Connect(function() stepSel(1)  end)
+
+Players.PlayerRemoving:Connect(function(p)
+	if selectedTarget == p then
+		selectedTarget = nil
+		refreshSelector()
+		if grudaEnabled then
+			grudaEnabled = false grudaSet(false) grudaLbl.Text="Grudar  OFF"
+		end
+	end
+end)
+
+-- SPECTATE
+local spectateEnabled = false
+
+local function stopSpectate()
+	spectateEnabled = false
+	kickSet(false)
+	kickLbl.Text = "Spectate  OFF"
+	-- Devolve a câmera ao personagem local
+	local cam = workspace.CurrentCamera
+	cam.CameraSubject = player.Character and player.Character:FindFirstChildOfClass("Humanoid") or nil
+	cam.CameraType = Enum.CameraType.Follow
+end
+
+local function startSpectate(targetPlayer)
+	local targetChar = targetPlayer.Character
+	if not targetChar then
+		kickLbl.Text = "Sem char!"
+		task.delay(2, function()
+			kickLbl.Text = "Spectate  OFF"
+			kickSet(false)
+		end)
+		return
+	end
+	local targetHum = targetChar:FindFirstChildOfClass("Humanoid")
+	if not targetHum then return end
+
+	spectateEnabled = true
+	kickSet(true)
+	kickLbl.Text = "Spectate  ON"
+
+	local cam = workspace.CurrentCamera
+	cam.CameraSubject = targetHum
+	cam.CameraType = Enum.CameraType.Follow
+
+	-- Para automaticamente se o alvo sair do servidor
+	local conn
+	conn = Players.PlayerRemoving:Connect(function(p)
+		if p == targetPlayer then
+			conn:Disconnect()
+			stopSpectate()
+		end
+	end)
+end
+
+kickBtn.MouseButton1Click:Connect(function()
+	if spectateEnabled then
+		stopSpectate()
+	else
+		if not selectedTarget then
+			kickLbl.Text = "Selecione!"
+			task.delay(2, function() kickLbl.Text = "Spectate  OFF" kickSet(false) end)
+			return
+		end
+		startSpectate(selectedTarget)
+	end
+end)
+
+-- GRUDAR (aimlock)
+grudaBtn.MouseButton1Click:Connect(function()
+	if not selectedTarget then
+		grudaLbl.Text = "Selecione!" grudaSet(false)
+		task.delay(2, function() grudaLbl.Text="Grudar  OFF" end)
+		return
+	end
+	grudaEnabled = not grudaEnabled
+	grudaSet(grudaEnabled)
+	grudaLbl.Text = grudaEnabled and "Grudar  ON" or "Grudar  OFF"
+end)
+
+RunService.RenderStepped:Connect(function()
+	if not (grudaEnabled and selectedTarget) then return end
+	local targetChar = selectedTarget.Character
+	if not targetChar then
+		grudaEnabled=false grudaSet(false) grudaLbl.Text="Grudar  OFF" return
+	end
+	local head = targetChar:FindFirstChild("Head") or targetChar:FindFirstChild("HumanoidRootPart")
+	if head then
+		local cam = workspace.CurrentCamera
+		cam.CFrame = CFrame.lookAt(cam.CFrame.Position, head.Position)
+	end
+end)
+
+-- ================================================================
+-- SAVE / LOAD POSITION
+-- ================================================================
+savePosBtn.MouseButton1Click:Connect(function()
+	if not rootPart then return end
+	savedPlayerPos = rootPart.CFrame
+	savePosSet(true)
+	savePosLbl.Text = "Save Position  ✓"
+	loadPosSet(false)
+	loadPosLbl.Text = "Load Position"
+end)
+
+loadPosBtn.MouseButton1Click:Connect(function()
+	if not rootPart then return end
+	if not savedPlayerPos then
+		loadPosLbl.Text = "Sem posicao salva!"
+		task.delay(2, function() loadPosLbl.Text="Load Position" end)
+		return
+	end
+	rootPart.CFrame = savedPlayerPos
+	loadPosSet(true)
+	loadPosLbl.Text = "Load Position  ✓"
+	task.delay(1.5, function()
+		loadPosSet(false)
+		loadPosLbl.Text = "Load Position"
+	end)
+end)
+
+-- ================================================================
+-- AUTO CLICK
+-- ================================================================
+local acEnabled       = false
+local acUnitMs        = true
+local acCoordX        = nil
+local acCoordY        = nil
+local acDefining      = false
+local acDot           = nil
+local acClickConn     = nil
+local acThread        = nil
+
+-- ScreenGui separado – DisplayOrder alto garante que fica por cima de tudo,
+-- incluindo eventos de clique simulados que bateriam no próprio hub.
+local acGui = Instance.new("ScreenGui")
+acGui.Name = "SKY_AUTOCLICK" acGui.ResetOnSpawn = false
+acGui.IgnoreGuiInset = true acGui.DisplayOrder = 120
+acGui.Parent = GP()
+
+-- ── Botão flutuante STOP ─────────────────────────────────────────
+-- Fica fixo no canto inferior direito, FORA do scroll, sempre visível
+-- e com ZIndex altíssimo para nunca ser tapado pelo auto click.
+local acStopBtn = Instance.new("TextButton", acGui)
+acStopBtn.Size = chosenMobile and UDim2.new(0,140,0,52) or UDim2.new(0,90,0,40)
+acStopBtn.Position = chosenMobile
+	and UDim2.new(0.5,-70,1,-80)   -- mobile: centro inferior, fácil de tocar
+	or  UDim2.new(1,-106,1,-58)    -- PC: canto inferior direito
+acStopBtn.AnchorPoint = Vector2.new(0,0)
+acStopBtn.BackgroundColor3 = Color3.fromRGB(200,30,30)
+acStopBtn.BorderSizePixel = 0
+acStopBtn.AutoButtonColor = false
+acStopBtn.Text = "■  STOP"
+acStopBtn.Font = Enum.Font.GothamBlack
+acStopBtn.TextSize = chosenMobile and 20 or 15
+acStopBtn.TextColor3 = Color3.new(1,1,1)
+acStopBtn.ZIndex = 50
+acStopBtn.Visible = false
+corner(acStopBtn, 10)
+stroke(acStopBtn, 2, Color3.fromRGB(255,80,80))
+
+-- pulsa quando ativo
+task.spawn(function()
+	while acGui.Parent do
+		if acStopBtn.Visible then
+			TW(acStopBtn, 0.4, {BackgroundColor3 = Color3.fromRGB(255,50,50)})
+			task.wait(0.4)
+			TW(acStopBtn, 0.4, {BackgroundColor3 = Color3.fromRGB(160,20,20)})
+			task.wait(0.4)
+		else
+			task.wait(0.2)
+		end
+	end
+end)
+
+-- overlay escuro para captura de clique
+local acOverlay = Instance.new("TextButton", acGui)
+acOverlay.Size = UDim2.new(1,0,1,0)
+acOverlay.BackgroundColor3 = Color3.fromRGB(0,0,0)
+acOverlay.BackgroundTransparency = 0.65
+acOverlay.BorderSizePixel = 0
+acOverlay.Text = chosenMobile
+	and "Toque no local desejado\n[Fechar para cancelar]"
+	or  "Clique no local desejado\n[ESC para cancelar]"
+acOverlay.Font = Enum.Font.GothamBold
+acOverlay.TextSize = 22
+acOverlay.TextColor3 = Color3.fromRGB(0,255,160)
+acOverlay.AutoButtonColor = false
+acOverlay.ZIndex = 5
+acOverlay.Visible = false
+corner(acOverlay, 0)
+
+-- ── Helpers ──────────────────────────────────────────────────────
+local function acGetInterval()
+	local raw = tonumber(acSpeedBox.Text) or 100
+	if acUnitMs then return math.max(raw / 1000, 0.001)
+	else             return math.max(raw,         0.001) end
+end
+
+local function acCheckWarn()
+	local raw = tonumber(acSpeedBox.Text) or 100
+	local ms  = acUnitMs and raw or (raw * 1000)
+	acWarnLbl.Visible = (ms < 30)
+end
+
+acSpeedBox:GetPropertyChangedSignal("Text"):Connect(acCheckWarn)
+
+acUnitBtn.MouseButton1Click:Connect(function()
+	acUnitMs = not acUnitMs
+	acUnitBtn.Text = acUnitMs and "ms" or "s"
+	TW(acUnitBtn, 0.15, {BackgroundColor3 = acUnitMs and C.border or C.a1})
+	acCheckWarn()
+end)
+
+local function acRemoveDot()
+	if acDot then acDot:Destroy() acDot = nil end
+end
+
+local function acPlaceDot(x, y)
+	acRemoveDot()
+	local dot = Instance.new("Frame", acGui)
+	dot.Size = UDim2.new(0,16,0,16)
+	dot.Position = UDim2.new(0, x-8, 0, y-8)
+	dot.BackgroundColor3 = Color3.fromRGB(0,255,120)
+	dot.BorderSizePixel = 0
+	dot.ZIndex = 10
+	corner(dot, 8)
+	local ring = Instance.new("Frame", dot)
+	ring.Size = UDim2.new(0,24,0,24)
+	ring.Position = UDim2.new(0,-4,0,-4)
+	ring.BackgroundTransparency = 1
+	ring.BorderSizePixel = 0
+	ring.ZIndex = 9
+	corner(ring, 12)
+	local rs = stroke(ring, 2, Color3.fromRGB(0,255,120))
+	task.spawn(function()
+		while dot and dot.Parent do
+			TW(rs,   0.6, {Transparency=0})
+			TW(ring, 0.6, {Size=UDim2.new(0,30,0,30), Position=UDim2.new(0,-7,0,-7)})
+			task.wait(0.6)
+			TW(rs,   0.6, {Transparency=0.7})
+			TW(ring, 0.6, {Size=UDim2.new(0,24,0,24), Position=UDim2.new(0,-4,0,-4)})
+			task.wait(0.6)
+		end
+	end)
+	acDot = dot
+end
+
+local function acDoClick(x, y)
+	if chosenMobile then
+		-- Mobile: precisa mover antes (sem cursor físico)
+		pcall(function()
+			local vim = game:GetService("VirtualInputManager")
+			vim:SendMouseMoveEvent(x, y, game)
+			vim:SendMouseButtonEvent(x, y, 0, true,  game, 0)
+			vim:SendMouseButtonEvent(x, y, 0, false, game, 0)
+		end)
+		-- fallback ClickDetector (comum em simuladores mobile)
+		pcall(function()
+			local cam = workspace.CurrentCamera
+			local ray = cam:ScreenPointToRay(x, y)
+			local result = workspace:Raycast(ray.Origin, ray.Direction * 500)
+			if result then
+				local inst = result.Instance
+				local cd = inst:FindFirstChildOfClass("ClickDetector")
+					or (inst.Parent and inst.Parent:FindFirstChildOfClass("ClickDetector"))
+				if cd then fireclickdetector(cd) end
+			end
+		end)
+	else
+		-- PC: SendMouseButtonEvent já recebe coordenada absoluta,
+		-- NÃO mover o cursor (SendMouseMoveEvent travava o mouse no ponto)
+		pcall(function()
+			local vim = game:GetService("VirtualInputManager")
+			vim:SendMouseButtonEvent(x, y, 0, true,  game, 0)
+			vim:SendMouseButtonEvent(x, y, 0, false, game, 0)
+		end)
+	end
+end
+
+-- ── Stop / Start ─────────────────────────────────────────────────
+local function acStop()
+	acEnabled = false
+	acActivSet(false)
+	acActivLbl.Text  = "Auto Click  OFF"
+	acStopBtn.Visible = false
+	if acThread then task.cancel(acThread) acThread = nil end
+end
+
+local function acStart()
+	if not acCoordX or not acCoordY then
+		acActivLbl.Text = "Defina coords!"
+		task.delay(2, function()
+			acActivLbl.Text = "Auto Click  OFF"
+			acActivSet(false)
+		end)
+		return
+	end
+	acEnabled = true
+	acActivSet(true)
+	acActivLbl.Text   = "Auto Click  ON"
+	acStopBtn.Visible = true   -- mostra o botão flutuante
+	acThread = task.spawn(function()
+		while acEnabled do
+			acDoClick(acCoordX, acCoordY)
+			task.wait(acGetInterval())
+		end
+	end)
+end
+
+-- ── Conexões de parada ────────────────────────────────────────────
+-- 1) Botão flutuante STOP (ZIndex 50, sempre clicável)
+acStopBtn.MouseButton1Click:Connect(acStop)
+
+-- 2) Botão dentro do hub
+acActivBtn.MouseButton1Click:Connect(function()
+	if acEnabled then acStop() else acStart() end
+end)
+
+-- 3) Tecla X como atalho de emergência — só PC
+if not chosenMobile then
+	UserInputService.InputBegan:Connect(function(inp, gp)
+		if inp.KeyCode == Enum.KeyCode.X and acEnabled then
+			acStop()
+		end
+	end)
+end
+
+-- ── Definir / Salvar Coordenadas ─────────────────────────────────
+acCoordBtn.MouseButton1Click:Connect(function()
+	if acDefining then
+		acDefining = false
+		acOverlay.Visible = false
+		if acClickConn then acClickConn:Disconnect() acClickConn = nil end
+		acCoordLbl.Text = "Definir Coordenadas"
+		acCoordSet(false)
+	else
+		acDefining = true
+		acRemoveDot()
+		acCoordX, acCoordY = nil, nil
+		acCoordLbl.Text  = "Salvar Coordenadas"
+		acCoordSet(true)
+		acOverlay.Visible = true
+
+		acClickConn = acOverlay.MouseButton1Click:Connect(function()
+			local mp = UserInputService:GetMouseLocation()
+			acCoordX = math.floor(mp.X)
+			acCoordY = math.floor(mp.Y)
+			acPlaceDot(acCoordX, acCoordY)
+			acOverlay.Visible = false
+			acCoordLbl.Text = "Salvar Coordenadas ✓"
+		end)
+	end
+end)
+
+-- ESC cancela a seleção de coordenadas — só PC
+if not chosenMobile then
+	UserInputService.InputBegan:Connect(function(inp, gp)
+		if inp.KeyCode == Enum.KeyCode.Escape and acDefining then
+			acDefining = false
+			acOverlay.Visible = false
+			if acClickConn then acClickConn:Disconnect() acClickConn = nil end
+			acCoordLbl.Text = "Definir Coordenadas"
+			acCoordSet(false)
+		end
+	end)
+end
+
+-- ================================================================
+-- FECHAR TUDO (botão X)
+-- ================================================================
+closeBtn.MouseButton1Click:Connect(function()
+	-- Para o auto click se estiver rodando
+	if acEnabled then acStop() end
+	-- Para o Grudar
+	grudaEnabled = false
+	-- Restaura câmera se em Spectate
+	if spectateEnabled then stopSpectate() end
+	-- Destrói todas as GUIs do hub
+	pcall(function() gui:Destroy() end)
+	pcall(function() acGui:Destroy() end)
+	pcall(function() lineGui:Destroy() end)
+	-- Destrói ESP restante
+	clearESP()
+	-- Remove highlights e billboards de outros jogadores
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player and p.Character then
+			for _, d in ipairs(p.Character:GetDescendants()) do
+				if d:IsA("Highlight") or d.Name == "SKY_ESP_NAME" then
+					pcall(function() d:Destroy() end)
+				end
+			end
+		end
+	end
+end)
+
+-- ================================================================
+-- SISTEMA DE IDIOMA
+-- ================================================================
+local currentLang = "PT"
+local mapaOpen    = false
+local mapaGui     = nil
+local chatEnabled = false
+local chatGui     = nil
+
+local T = {
+	PT = {
+		secVelocidade  = "VELOCIDADE",
+		secPulo        = "PULO INFINITO",
+		secVoar        = "VOAR",
+		secNoclip      = "NO-CLIP",
+		secPlayers     = "PLAYERS",
+		secEsp         = "ESP PLAYERS",
+		secAntilag     = "ANTI-LAG",
+		secPosicao     = "POSICAO",
+		secAutoClick   = "AUTO CLICK",
+		secIdioma      = "IDIOMA",
+		speedOff       = "Velocidade  OFF",
+		speedOn        = "Velocidade  ON",
+		jumpOff        = "Pulo Infinito  OFF",
+		jumpOn         = "Pulo Infinito  ON",
+		flyOff         = "Fly  OFF",
+		flyOn          = "Fly  ON",
+		noclipOff      = "No-Clip  OFF",
+		noclipOn       = "No-Clip  ON",
+		espOff         = "ESP  OFF",
+		espOn          = "ESP  ON",
+		antiOff        = "Anti-Lag  OFF",
+		antiOn         = "Anti-Lag  ON",
+		savePos        = "Save Position",
+		loadPos        = "Load Position",
+		spectateOff    = "Spectate  OFF",
+		spectateOn     = "Spectate  ON",
+		grudaOff       = "Grudar  OFF",
+		grudaOn        = "Grudar  ON",
+		acOff          = "Auto Click  OFF",
+		acOn           = "Auto Click  ON",
+		definirCoord   = "Definir Coordenadas",
+		salvarCoord    = "Salvar Coordenadas",
+		salvarCoordOk  = "Salvar Coordenadas ✓",
+		nenhum         = "Nenhum",
+		speedPh        = "Velocidade (Ex: 100)",
+		flyPh          = "Vel. fly (Ex: 60)",
+		acPh           = "Velocidade (ex: 100ms)",
+		warnMs         = "⚠ Abaixo de 30ms pode travar!",
+		warnPc         = "RECOMENDADO USAR EM PC !",
+		hintMobile     = "Toque em S",
+		hintPc         = "[Z] fechar",
+		selecione      = "Selecione!",
+		semChar        = "Sem char!",
+		semPos         = "Sem posicao salva!",
+		defCoords      = "Defina coords!",
+		secMapa        = "ARQUIVOS DO MAPA",
+		mapaBtnLbl     = "Ver Arquivos",
+		mapaBtnClose   = "Fechar Arquivos",
+		secChat        = "VER CHAT",
+		chatOff        = "Ver Chat  OFF",
+		chatOn         = "Ver Chat  ON",
+	},
+	EN = {
+		secVelocidade  = "SPEED",
+		secPulo        = "INFINITE JUMP",
+		secVoar        = "FLY",
+		secNoclip      = "NO-CLIP",
+		secPlayers     = "PLAYERS",
+		secEsp         = "ESP PLAYERS",
+		secAntilag     = "ANTI-LAG",
+		secPosicao     = "POSITION",
+		secAutoClick   = "AUTO CLICK",
+		secIdioma      = "LANGUAGE",
+		speedOff       = "Speed  OFF",
+		speedOn        = "Speed  ON",
+		jumpOff        = "Infinite Jump  OFF",
+		jumpOn         = "Infinite Jump  ON",
+		flyOff         = "Fly  OFF",
+		flyOn          = "Fly  ON",
+		noclipOff      = "No-Clip  OFF",
+		noclipOn       = "No-Clip  ON",
+		espOff         = "ESP  OFF",
+		espOn          = "ESP  ON",
+		antiOff        = "Anti-Lag  OFF",
+		antiOn         = "Anti-Lag  ON",
+		savePos        = "Save Position",
+		loadPos        = "Load Position",
+		spectateOff    = "Spectate  OFF",
+		spectateOn     = "Spectate  ON",
+		grudaOff       = "Snap  OFF",
+		grudaOn        = "Snap  ON",
+		acOff          = "Auto Click  OFF",
+		acOn           = "Auto Click  ON",
+		definirCoord   = "Set Coordinates",
+		salvarCoord    = "Save Coordinates",
+		salvarCoordOk  = "Save Coordinates ✓",
+		nenhum         = "None",
+		speedPh        = "Speed (Ex: 100)",
+		flyPh          = "Fly speed (Ex: 60)",
+		acPh           = "Speed (ex: 100ms)",
+		warnMs         = "⚠ Below 30ms may cause lag!",
+		warnPc         = "RECOMMENDED ON PC !",
+		hintMobile     = "Tap S",
+		hintPc         = "[Z] close",
+		selecione      = "Select one!",
+		semChar        = "No character!",
+		semPos         = "No saved position!",
+		defCoords      = "Set coords first!",
+		secMapa        = "MAP FILES",
+		mapaBtnLbl     = "View Files",
+		mapaBtnClose   = "Close Files",
+		secChat        = "VIEW CHAT",
+		chatOff        = "View Chat  OFF",
+		chatOn         = "View Chat  ON",
+	},
+	ES = {
+		secVelocidade  = "VELOCIDAD",
+		secPulo        = "SALTO INFINITO",
+		secVoar        = "VOLAR",
+		secNoclip      = "NO-CLIP",
+		secPlayers     = "JUGADORES",
+		secEsp         = "ESP JUGADORES",
+		secAntilag     = "ANTI-LAG",
+		secPosicao     = "POSICION",
+		secAutoClick   = "AUTO CLICK",
+		secIdioma      = "IDIOMA",
+		speedOff       = "Velocidad  OFF",
+		speedOn        = "Velocidad  ON",
+		jumpOff        = "Salto Infinito  OFF",
+		jumpOn         = "Salto Infinito  ON",
+		flyOff         = "Volar  OFF",
+		flyOn          = "Volar  ON",
+		noclipOff      = "No-Clip  OFF",
+		noclipOn       = "No-Clip  ON",
+		espOff         = "ESP  OFF",
+		espOn          = "ESP  ON",
+		antiOff        = "Anti-Lag  OFF",
+		antiOn         = "Anti-Lag  ON",
+		savePos        = "Guardar Posicion",
+		loadPos        = "Cargar Posicion",
+		spectateOff    = "Spectate  OFF",
+		spectateOn     = "Spectate  ON",
+		grudaOff       = "Pegarse  OFF",
+		grudaOn        = "Pegarse  ON",
+		acOff          = "Auto Click  OFF",
+		acOn           = "Auto Click  ON",
+		definirCoord   = "Definir Coordenadas",
+		salvarCoord    = "Guardar Coordenadas",
+		salvarCoordOk  = "Guardar Coordenadas ✓",
+		nenhum         = "Ninguno",
+		speedPh        = "Velocidad (Ej: 100)",
+		flyPh          = "Vel. vuelo (Ej: 60)",
+		acPh           = "Velocidad (ej: 100ms)",
+		warnMs         = "⚠ Menos de 30ms puede lentificar!",
+		warnPc         = "RECOMENDADO EN PC !",
+		hintMobile     = "Toca S",
+		hintPc         = "[Z] cerrar",
+		selecione      = "Selecciona!",
+		semChar        = "Sin personaje!",
+		semPos         = "Sin posicion guardada!",
+		defCoords      = "Define coordenadas!",
+		secMapa        = "ARCHIVOS DEL MAPA",
+		mapaBtnLbl     = "Ver Archivos",
+		mapaBtnClose   = "Cerrar Archivos",
+		secChat        = "VER CHAT",
+		chatOff        = "Ver Chat  OFF",
+		chatOn         = "Ver Chat  ON",
+	},
+}
+
+local function applyLang(code)
+	currentLang = code
+	local l = T[code]
+
+	-- destacar botão ativo
+	for _, pair in ipairs({
+		{langPTBtn, langPTStroke, "PT"},
+		{langENBtn, langENStroke, "EN"},
+		{langESBtn, langESStroke, "ES"},
+	}) do
+		local btn, bs, lcode = pair[1], pair[2], pair[3]
+		if lcode == code then
+			TW(btn, 0.2, {BackgroundColor3 = C.btnOn, TextColor3 = C.a2})
+			TW(bs,  0.2, {Transparency = 0, Color = C.a2})
+		else
+			TW(btn, 0.2, {BackgroundColor3 = C.btnOff, TextColor3 = C.dim})
+			TW(bs,  0.2, {Transparency = 0.6, Color = C.a2})
+		end
+	end
+
+	-- seções
+	secVelocidade.Text = l.secVelocidade
+	secPulo.Text       = l.secPulo
+	secVoar.Text       = l.secVoar
+	secNoclip.Text     = l.secNoclip
+	secPlayers.Text    = l.secPlayers
+	secEsp.Text        = l.secEsp
+	secAntilag.Text    = l.secAntilag
+	secPosicao.Text    = l.secPosicao
+	secAutoClick.Text  = l.secAutoClick
+	secIdioma.Text     = l.secIdioma
+	secMapa.Text       = l.secMapa
+	if not mapaOpen then mapaLbl.Text = l.mapaBtnLbl
+	else               mapaLbl.Text = l.mapaBtnClose end
+	secChat.Text       = l.secChat
+	chatLbl.Text       = chatEnabled and l.chatOn or l.chatOff
+
+	-- botões (preserva estado ON/OFF atual)
+	speedLbl.Text   = speedEnabled  and (l.speedOn  .."  | "..(savedSpeed or "")) or l.speedOff
+	jumpLbl.Text    = infiniteJump  and l.jumpOn   or l.jumpOff
+	flyLbl.Text     = flyEnabled    and l.flyOn    or l.flyOff
+	noclipLbl.Text  = noclipEnabled and l.noclipOn or l.noclipOff
+	espLbl.Text     = espEnabled    and l.espOn    or l.espOff
+	antiLbl.Text    = antiLagEnabled and l.antiOn  or l.antiOff
+	savePosLbl.Text = l.savePos
+	loadPosLbl.Text = l.loadPos
+	kickLbl.Text    = spectateEnabled and l.spectateOn or l.spectateOff
+	grudaLbl.Text   = grudaEnabled   and l.grudaOn  or l.grudaOff
+	acActivLbl.Text = acEnabled      and l.acOn     or l.acOff
+	acCoordLbl.Text = acDefining     and l.salvarCoord or l.definirCoord
+
+	-- placeholders
+	speedBox.PlaceholderText   = l.speedPh
+	flyBox.PlaceholderText     = l.flyPh
+	acSpeedBox.PlaceholderText = l.acPh
+
+	-- seletor
+	if not selectedTarget then selDisp.Text = l.nenhum end
+
+	-- avisos
+	acWarnLbl.Text = l.warnMs
+	acPcLbl.Text   = l.warnPc
+
+	-- hint header
+	zHint.Text = chosenMobile and l.hintMobile or l.hintPc
+end
+
+langPTBtn.MouseButton1Click:Connect(function() applyLang("PT") end)
+langENBtn.MouseButton1Click:Connect(function() applyLang("EN") end)
+langESBtn.MouseButton1Click:Connect(function() applyLang("ES") end)
+
+-- aplica PT por padrão ao iniciar
+applyLang("PT")
+
+-- ================================================================
+-- VER CHAT
+-- ================================================================
+local chatHistory = {}
+local chatRows = {}
+
+local function addChatMessage(playerName, message, timestamp)
+	table.insert(chatHistory, {
+		player = playerName,
+		msg = message,
+		time = timestamp or os.date("%H:%M:%S")
+	})
+	-- limita histórico a 100 mensagens
+	if #chatHistory > 100 then
+		table.remove(chatHistory, 1)
+	end
+end
+
+local function createChatGui()
+	if chatGui then chatGui:Destroy() chatGui=nil end
+
+	chatGui = Instance.new("ScreenGui")
+	chatGui.Name = "SKY_CHAT" chatGui.ResetOnSpawn = false
+	chatGui.IgnoreGuiInset = true chatGui.DisplayOrder = 85
+	chatGui.Parent = GP()
+
+	-- painel principal
+	local cp = Instance.new("Frame", chatGui)
+	cp.Size = UDim2.new(0,340,0,420)
+	cp.Position = UDim2.new(1,-356,1,-436)
+	cp.BackgroundColor3 = C.bg cp.BorderSizePixel = 0
+	cp.Active = true cp.Draggable = true
+	corner(cp,14)
+	grad(cp, Color3.fromRGB(10,8,22), Color3.fromRGB(5,5,14), 160)
+	stroke(cp,1.5,C.a3)
+
+	-- header
+	local ch = Instance.new("Frame", cp)
+	ch.Size = UDim2.new(1,0,0,36) ch.BackgroundColor3 = C.panel
+	ch.BorderSizePixel = 0 corner(ch,14)
+	local chFix = Instance.new("Frame",ch)
+	chFix.Size=UDim2.new(1,0,0.5,0) chFix.Position=UDim2.new(0,0,0.5,0)
+	chFix.BackgroundColor3=C.panel chFix.BorderSizePixel=0
+
+	local cTitle = Instance.new("TextLabel", ch)
+	cTitle.Size = UDim2.new(1,-40,1,0) cTitle.Position = UDim2.new(0,10,0,0)
+	cTitle.BackgroundTransparency = 1
+	cTitle.Text = T[currentLang].secChat
+	cTitle.Font = Enum.Font.GothamBold cTitle.TextSize = 12
+	cTitle.TextColor3 = C.a3 cTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+	local cClose = Instance.new("TextButton", ch)
+	cClose.Size = UDim2.new(0,24,0,24) cClose.Position = UDim2.new(1,-30,0,6)
+	cClose.BackgroundColor3 = Color3.fromRGB(180,30,30) cClose.BorderSizePixel = 0
+	cClose.AutoButtonColor = false cClose.Text = "✕"
+	cClose.Font = Enum.Font.GothamBlack cClose.TextSize = 12
+	cClose.TextColor3 = Color3.new(1,1,1) corner(cClose,6)
+	cClose.MouseButton1Click:Connect(function()
+		chatEnabled = false
+		chatSet(false) chatLbl.Text = T[currentLang].chatOff
+		if chatGui then chatGui:Destroy() chatGui=nil end
+	end)
+
+	-- scroll de mensagens
+	local cScroll = Instance.new("ScrollingFrame", cp)
+	cScroll.Size = UDim2.new(1,-8,1,-44) cScroll.Position = UDim2.new(0,4,0,40)
+	cScroll.BackgroundTransparency = 1 cScroll.BorderSizePixel = 0
+	cScroll.ScrollBarThickness = 3 cScroll.ScrollBarImageColor3 = C.a3
+	cScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+	local cList = Instance.new("UIListLayout", cScroll)
+	cList.Padding = UDim.new(0,4) cList.SortOrder = Enum.SortOrder.LayoutOrder
+
+	local function renderMessages()
+		for _, r in ipairs(chatRows) do if r then r:Destroy() end end
+		chatRows = {}
+		for idx, entry in ipairs(chatHistory) do
+			local row = Instance.new("Frame", cScroll)
+			row.Size = UDim2.new(1,-6,0,0)
+			row.BackgroundColor3 = Color3.fromRGB(18,16,30)
+			row.BackgroundTransparency = 0.3
+			row.BorderSizePixel = 0
+			row.LayoutOrder = idx
+			row.AutomaticSize = Enum.AutomaticSize.Y
+			corner(row,6)
+
+			local rowPad = Instance.new("UIPadding", row)
+			rowPad.PaddingLeft = UDim.new(0,6)
+			rowPad.PaddingRight = UDim.new(0,6)
+			rowPad.PaddingTop = UDim.new(0,4)
+			rowPad.PaddingBottom = UDim.new(0,4)
+
+			-- timestamp + player
+			local header = Instance.new("TextLabel", row)
+			header.Size = UDim2.new(1,0,0,14)
+			header.BackgroundTransparency = 1
+			header.Text = "["..entry.time.."] "..entry.player
+			header.Font = Enum.Font.GothamBold header.TextSize = 10
+			header.TextColor3 = Color3.fromRGB(100,180,255)
+			header.TextXAlignment = Enum.TextXAlignment.Left
+			header.TextYAlignment = Enum.TextYAlignment.Top
+
+			-- mensagem
+			local msgLbl = Instance.new("TextLabel", row)
+			msgLbl.Size = UDim2.new(1,0,0,0)
+			msgLbl.Position = UDim2.new(0,0,0,16)
+			msgLbl.BackgroundTransparency = 1
+			msgLbl.Text = entry.msg
+			msgLbl.Font = Enum.Font.Gotham msgLbl.TextSize = 11
+			msgLbl.TextColor3 = C.white
+			msgLbl.TextXAlignment = Enum.TextXAlignment.Left
+			msgLbl.TextYAlignment = Enum.TextYAlignment.Top
+			msgLbl.TextWrapped = true
+			msgLbl.AutomaticSize = Enum.AutomaticSize.Y
+
+			table.insert(chatRows, row)
+		end
+		-- auto scroll para baixo
+		task.wait(0.05)
+		cScroll.CanvasPosition = Vector2.new(0, cScroll.AbsoluteCanvasSize.Y)
+	end
+
+	renderMessages()
+
+	-- conecta aos serviços de chat
+	pcall(function()
+		-- TextChatService (novo sistema)
+		local TextChatService = game:GetService("TextChatService")
+		if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+			TextChatService.MessageReceived:Connect(function(message)
+				if message.TextSource then
+					addChatMessage(message.TextSource.Name, message.Text)
+					if chatEnabled then renderMessages() end
+				end
+			end)
+		end
+	end)
+
+	pcall(function()
+		-- Chat legado
+		local Players = game:GetService("Players")
+		for _, p in ipairs(Players:GetPlayers()) do
+			p.Chatted:Connect(function(msg)
+				addChatMessage(p.Name, msg)
+				if chatEnabled then renderMessages() end
+			end)
+		end
+		Players.PlayerAdded:Connect(function(p)
+			p.Chatted:Connect(function(msg)
+				addChatMessage(p.Name, msg)
+				if chatEnabled then renderMessages() end
+			end)
+		end)
+	end)
+end
+
+chatBtn.MouseButton1Click:Connect(function()
+	chatEnabled = not chatEnabled
+	chatSet(chatEnabled)
+	chatLbl.Text = chatEnabled and T[currentLang].chatOn or T[currentLang].chatOff
+	if chatEnabled then
+		createChatGui()
+	else
+		if chatGui then chatGui:Destroy() chatGui=nil end
+	end
+end)
+
+-- ================================================================
+-- VER ARQUIVOS DO MAPA
+-- ================================================================
+
+local function buildFileTree(parent, indent, lines, depth)
+	if depth > 4 then return end  -- limita profundidade
+	for _, child in ipairs(parent:GetChildren()) do
+		local prefix = string.rep("  ", indent)
+		local icon = "📁"
+		if child:IsA("BasePart") or child:IsA("UnionOperation") then icon = "🧱"
+		elseif child:IsA("Script") or child:IsA("LocalScript") or child:IsA("ModuleScript") then icon = "📜"
+		elseif child:IsA("Model") then icon = "📦"
+		elseif child:IsA("Humanoid") then icon = "🧍"
+		elseif child:IsA("Camera") then icon = "📷"
+		elseif child:IsA("Sound") then icon = "🔊"
+		elseif child:IsA("Light") then icon = "💡"
+		elseif child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("Frame") or child:IsA("ScreenGui") then icon = "🖼"
+		elseif child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then icon = "📡"
+		elseif child:IsA("Folder") then icon = "📂"
+		elseif child:IsA("StringValue") or child:IsA("IntValue") or child:IsA("BoolValue") then icon = "🔣"
+		elseif child:IsA("Animation") or child:IsA("AnimationController") then icon = "🎞"
+		end
+		local childCount = #child:GetChildren()
+		local countStr = childCount > 0 and (" ["..childCount.."]") or ""
+		table.insert(lines, prefix..icon.." "..child.Name.." : "..child.ClassName..countStr)
+		if childCount > 0 and depth < 3 then
+			buildFileTree(child, indent+1, lines, depth+1)
+		end
+	end
+end
+
+local function openMapaGui()
+	if mapaGui then mapaGui:Destroy() mapaGui=nil end
+
+	mapaGui = Instance.new("ScreenGui")
+	mapaGui.Name = "SKY_MAPA" mapaGui.ResetOnSpawn = false
+	mapaGui.IgnoreGuiInset = true mapaGui.DisplayOrder = 80
+	mapaGui.Parent = GP()
+
+	-- painel principal
+	local mp = Instance.new("Frame", mapaGui)
+	mp.Size = UDim2.new(0,320,0,480)
+	mp.Position = UDim2.new(0.5,10,0.5,-240)
+	mp.BackgroundColor3 = C.bg mp.BorderSizePixel = 0
+	mp.Active = true mp.Draggable = true
+	corner(mp,14)
+	grad(mp, Color3.fromRGB(10,8,22), Color3.fromRGB(5,5,14), 160)
+	stroke(mp,1.5,C.a1)
+
+	-- header do painel
+	local mh = Instance.new("Frame", mp)
+	mh.Size = UDim2.new(1,0,0,40) mh.BackgroundColor3 = C.panel
+	mh.BorderSizePixel = 0 corner(mh,14)
+	local mhFix = Instance.new("Frame",mh)
+	mhFix.Size=UDim2.new(1,0,0.5,0) mhFix.Position=UDim2.new(0,0,0.5,0)
+	mhFix.BackgroundColor3=C.panel mhFix.BorderSizePixel=0
+
+	local mTitle = Instance.new("TextLabel", mh)
+	mTitle.Size = UDim2.new(1,-44,1,0) mTitle.Position = UDim2.new(0,12,0,0)
+	mTitle.BackgroundTransparency = 1
+	mTitle.Text = T[currentLang].secMapa
+	mTitle.Font = Enum.Font.GothamBold mTitle.TextSize = 13
+	mTitle.TextColor3 = C.a1 mTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+	local mClose = Instance.new("TextButton", mh)
+	mClose.Size = UDim2.new(0,26,0,26) mClose.Position = UDim2.new(1,-34,0,7)
+	mClose.BackgroundColor3 = Color3.fromRGB(180,30,30) mClose.BorderSizePixel = 0
+	mClose.AutoButtonColor = false mClose.Text = "✕"
+	mClose.Font = Enum.Font.GothamBlack mClose.TextSize = 13
+	mClose.TextColor3 = Color3.new(1,1,1) corner(mClose,6)
+	mClose.MouseButton1Click:Connect(function()
+		mapaOpen = false
+		mapaSet(false) mapaLbl.Text = T[currentLang].mapaBtnLbl
+		if mapaGui then mapaGui:Destroy() mapaGui=nil end
+	end)
+
+	-- barra de busca
+	local searchWrap = Instance.new("Frame", mp)
+	searchWrap.Size = UDim2.new(1,-20,0,30) searchWrap.Position = UDim2.new(0,10,0,46)
+	searchWrap.BackgroundColor3 = C.panel searchWrap.BorderSizePixel = 0
+	corner(searchWrap,8) stroke(searchWrap,1,C.border)
+
+	local searchBox = Instance.new("TextBox", searchWrap)
+	searchBox.Size = UDim2.new(1,-16,1,0) searchBox.Position = UDim2.new(0,8,0,0)
+	searchBox.BackgroundTransparency = 1 searchBox.PlaceholderText = "🔍 Buscar..."
+	searchBox.PlaceholderColor3 = C.dim searchBox.Text = ""
+	searchBox.Font = Enum.Font.Gotham searchBox.TextSize = 12
+	searchBox.TextColor3 = C.white searchBox.ClearTextOnFocus = false
+
+	-- scroll de arquivos
+	local mScroll = Instance.new("ScrollingFrame", mp)
+	mScroll.Size = UDim2.new(1,-8,1,-88) mScroll.Position = UDim2.new(0,4,0,82)
+	mScroll.BackgroundTransparency = 1 mScroll.BorderSizePixel = 0
+	mScroll.ScrollBarThickness = 3 mScroll.ScrollBarImageColor3 = C.a1
+
+	local mList = Instance.new("UIListLayout", mScroll)
+	mList.Padding = UDim.new(0,1) mList.SortOrder = Enum.SortOrder.LayoutOrder
+
+	-- constrói a árvore de arquivos
+	local allLines = {}
+	local services = {
+		workspace, game:GetService("ReplicatedStorage"),
+		game:GetService("StarterGui"), game:GetService("StarterPack"),
+		game:GetService("Lighting"), game:GetService("Teams"),
+		game:GetService("SoundService"), game:GetService("Chat"),
+	}
+
+	for _, svc in ipairs(services) do
+		pcall(function()
+			table.insert(allLines, "📦 "..svc.Name.." ["..#svc:GetChildren().."]")
+			buildFileTree(svc, 1, allLines, 1)
+		end)
+	end
+
+	local rowInstances = {}
+
+	local function buildRows(filter)
+		-- limpa linhas anteriores
+		for _, r in ipairs(rowInstances) do if r then r:Destroy() end end
+		rowInstances = {}
+		local idx = 0
+		for _, line in ipairs(allLines) do
+			if filter == "" or line:lower():find(filter:lower(), 1, true) then
+				idx = idx + 1
+				local row = Instance.new("TextLabel", mScroll)
+				row.Size = UDim2.new(1,0,0,18)
+				row.BackgroundTransparency = idx%2==0 and 0.92 or 1
+				row.BackgroundColor3 = Color3.fromRGB(20,20,40)
+				row.BorderSizePixel = 0
+				row.Text = line
+				row.Font = Enum.Font.Gotham row.TextSize = 10
+				row.TextColor3 = line:sub(1,2)=="📦" and C.a1
+					or (line:find("📜") and C.gold or C.white)
+				row.TextXAlignment = Enum.TextXAlignment.Left
+				row.TextTruncate = Enum.TextTruncate.AtEnd
+				row.LayoutOrder = idx
+				local pad = Instance.new("UIPadding", row)
+				pad.PaddingLeft = UDim.new(0,6)
+				table.insert(rowInstances, row)
+			end
+		end
+		mScroll.CanvasSize = UDim2.new(0,0,0,idx*19+4)
+	end
+
+	buildRows("")
+	searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+		buildRows(searchBox.Text)
+	end)
+end
+
+mapaBtn.MouseButton1Click:Connect(function()
+	mapaOpen = not mapaOpen
+	mapaSet(mapaOpen)
+	if mapaOpen then
+		mapaLbl.Text = T[currentLang].mapaBtnClose
+		openMapaGui()
+	else
+		mapaLbl.Text = T[currentLang].mapaBtnLbl
+		if mapaGui then mapaGui:Destroy() mapaGui=nil end
+	end
+end)
+
+print("[SKY HUB v3.0] OK "..(isAdmin and "| ADMIN" or "").." | "..(chosenMobile and "Mobile" or "PC"))
